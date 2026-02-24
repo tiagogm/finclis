@@ -46,50 +46,51 @@ export async function handleScaChallenge(
     "One-Time-Token": ott,
   };
 
-  // Step 1: Get OTT status to discover required challenges
-  if (scaVerbose) console.error(`-> GET ${API_URL}/v1/one-time-token/status`);
-  const statusRes = await fetch(`${API_URL}/v1/one-time-token/status`, {
-    headers,
-  });
-  if (scaVerbose) console.error(`<- ${statusRes.status}`);
+  // Loop: check status, resolve pending challenges, repeat until all passed
+  for (let round = 1; round <= 5; round++) {
+    if (scaVerbose) console.error(`-> GET ${API_URL}/v1/one-time-token/status (round ${round})`);
+    const statusRes = await fetch(`${API_URL}/v1/one-time-token/status`, { headers });
+    if (scaVerbose) console.error(`<- ${statusRes.status}`);
 
-  if (!statusRes.ok) {
-    throw new Error(`SCA status check failed (${statusRes.status})`);
-  }
-
-  const status = await statusRes.json();
-  const challenges: Challenge[] = status.oneTimeTokenProperties?.challenges || [];
-
-  if (scaVerbose) {
-    console.error(`SCA challenges: ${JSON.stringify(challenges.map(c => ({
-      type: c.primaryChallenge.type,
-      required: c.required,
-      passed: c.passed,
-      alternatives: c.alternatives?.map(a => a.type),
-    })))}`);
-  }
-
-  // Step 2: Find required, unpassed challenges
-  const pending = challenges.filter(c => c.required && !c.passed);
-  if (pending.length === 0) {
-    if (scaVerbose) console.error("SCA: no pending challenges, OTT should be ready");
-    return;
-  }
-
-  for (const challenge of pending) {
-    const chosen = pickCliChallenge(challenge);
-    if (!chosen) {
-      const allTypes = [
-        challenge.primaryChallenge.type,
-        ...(challenge.alternatives?.map(a => a.type) || []),
-      ];
-      throw new Error(
-        `SCA requires one of [${allTypes.join(", ")}] which this CLI doesn't support. ` +
-        `Complete the transfer at wise.com instead.`
-      );
+    if (!statusRes.ok) {
+      throw new Error(`SCA status check failed (${statusRes.status})`);
     }
-    await resolveChallenge(chosen, headers);
+
+    const status = await statusRes.json();
+    const challenges: Challenge[] = status.oneTimeTokenProperties?.challenges || [];
+
+    if (scaVerbose) {
+      console.error(`SCA challenges: ${JSON.stringify(challenges.map(c => ({
+        type: c.primaryChallenge.type,
+        required: c.required,
+        passed: c.passed,
+        alternatives: c.alternatives?.map(a => a.type),
+      })))}`);
+    }
+
+    const pending = challenges.filter(c => c.required && !c.passed);
+    if (pending.length === 0) {
+      if (scaVerbose) console.error("SCA: all challenges passed, OTT ready");
+      return;
+    }
+
+    for (const challenge of pending) {
+      const chosen = pickCliChallenge(challenge);
+      if (!chosen) {
+        const allTypes = [
+          challenge.primaryChallenge.type,
+          ...(challenge.alternatives?.map(a => a.type) || []),
+        ];
+        throw new Error(
+          `SCA requires one of [${allTypes.join(", ")}] which this CLI doesn't support. ` +
+          `Complete the transfer at wise.com instead.`
+        );
+      }
+      await resolveChallenge(chosen, headers);
+    }
   }
+
+  throw new Error("SCA: too many challenge rounds — something went wrong.");
 }
 
 // Challenge types this CLI can handle, in preference order

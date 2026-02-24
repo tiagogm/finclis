@@ -1,4 +1,4 @@
-import { API_URL, loadSession, Session } from "./auth.js";
+import { API_URL, BASE_URL, loadSession, Session } from "./auth.js";
 import { isScaChallenge, handleScaChallenge } from "./sca.js";
 
 let verbose = false;
@@ -84,6 +84,28 @@ export async function wiseGet(path: string): Promise<any> {
 }
 
 /**
+ * Make an authenticated GET request to the wise.com gateway (internal API).
+ */
+export async function wiseGatewayGet(path: string): Promise<any> {
+  const session = requireSession();
+
+  const url = `${BASE_URL}/gateway${path}`;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${session.token}`,
+  };
+
+  if (verbose) console.error(`-> GET ${url}`);
+  const res = await fetch(url, { headers });
+  if (verbose) console.error(`<- ${res.status}`);
+
+  if (!res.ok) {
+    throw await apiError(res);
+  }
+
+  return res.json();
+}
+
+/**
  * Make an authenticated POST request with automatic SCA retry.
  */
 export async function wisePost(
@@ -118,7 +140,13 @@ export async function wisePost(
       headers: { ...headers, "x-2fa-approval": ott },
       body: JSON.stringify(body),
     });
-    if (verbose) console.error(`<- ${res.status}`);
+    if (verbose) {
+      console.error(`<- ${res.status}`);
+      if (res.status === 403) {
+        console.error(`<- x-2fa-approval=${res.headers.get("x-2fa-approval")}`);
+        console.error(`<- x-2fa-approval-result=${res.headers.get("x-2fa-approval-result")}`);
+      }
+    }
   }
 
   if (!res.ok) {

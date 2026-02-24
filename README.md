@@ -69,7 +69,17 @@ wise logout
 
 ## How it works
 
-Login opens a real Chromium browser via Playwright so you can complete email + 2FA normally. The CLI captures the OAuth token from the browser session and stores it at `~/.wise-cli/session.json` (mode 0600, directory mode 0700). All subsequent commands use this token to call the Wise API. Sessions expire after 12 hours.
+Login opens a real Chromium browser via Playwright so you can complete email + 2FA normally. The CLI captures the OAuth token from the browser session and stores it at `~/.wise-cli/session.json` (mode 0600, directory mode 0700). All subsequent commands use this token to call the Wise API.
+
+Sessions expire after 1 hour by default. Set a custom TTL with `wise login --ttl 120` (in minutes). Logout revokes the token server-side, clears the session file, and removes auth cookies from the browser profile (Turnstile/device trust is preserved for smoother re-login).
+
+## Security
+
+- **Token storage:** OAuth token stored in `~/.wise-cli/session.json` with 0600 permissions. The file is plaintext — any process running as your user can read it.
+- **Session expiry:** Client-side TTL (default 1 hour). The server may keep the token valid longer. Run `wise logout` to revoke server-side.
+- **Browser profile:** Persistent Chromium profile at `~/.wise-cli/browser-profile/` preserves device trust. Auth cookies are cleared on logout.
+- **SCA:** Sensitive operations (e.g. money moves) trigger Wise's Strong Customer Authentication — you'll be prompted for your password in the terminal.
+- **Token interception:** During login, the CLI only captures tokens from `wise.com` and `api.wise.com` responses.
 
 ## Development
 

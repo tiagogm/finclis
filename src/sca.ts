@@ -10,12 +10,19 @@ export function setScaVerbose(enabled: boolean): void {
  * Check if a response is an SCA challenge (403 with x-2fa-approval header).
  * Returns the one-time-token (OTT) if present, null otherwise.
  */
-export function isScaChallenge(res: Response): string | null {
+export async function isScaChallenge(res: Response): Promise<string | null> {
   if (res.status === 403) {
     const ott = res.headers.get("x-2fa-approval");
     if (scaVerbose) {
       console.error(`SCA headers: x-2fa-approval=${ott}`);
       console.error(`SCA headers: x-2fa-approval-result=${res.headers.get("x-2fa-approval-result")}`);
+      try {
+        const body = await res.clone().json();
+        console.error(`SCA 403 body: ${JSON.stringify(body)}`);
+      } catch {}
+    } else {
+      // Drain the response body to release the connection
+      await res.text().catch(() => {});
     }
     return ott;
   }

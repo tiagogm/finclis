@@ -65,7 +65,7 @@ export async function wiseGet(path: string): Promise<any> {
   let res = await fetch(url, { headers });
   if (verbose) console.error(`<- ${res.status}`);
 
-  const ott = isScaChallenge(res);
+  const ott = await isScaChallenge(res);
   if (ott) {
     if (verbose) console.error(`<- 403 (SCA challenge)`);
     await handleScaChallenge(ott, session.token);
@@ -108,7 +108,7 @@ export async function wisePost(
   });
   if (verbose) console.error(`<- ${res.status}`);
 
-  const ott = isScaChallenge(res);
+  const ott = await isScaChallenge(res);
   if (ott) {
     if (verbose) console.error(`<- 403 (SCA challenge)`);
     await handleScaChallenge(ott, session.token);
@@ -143,7 +143,7 @@ export async function wisePut(path: string): Promise<any> {
   let res = await fetch(url, { method: "PUT", headers });
   if (verbose) console.error(`<- ${res.status}`);
 
-  const ott = isScaChallenge(res);
+  const ott = await isScaChallenge(res);
   if (ott) {
     if (verbose) console.error(`<- 403 (SCA challenge)`);
     await handleScaChallenge(ott, session.token);

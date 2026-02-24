@@ -15,7 +15,11 @@ async function apiError(res: Response): Promise<Error> {
   let message = `API error ${res.status}`;
   try {
     const body = await res.json();
-    if (body.message) {
+    if (verbose) console.error(`<- body: ${JSON.stringify(body)}`);
+    if (body.errors?.length) {
+      const msgs = body.errors.map((e: any) => e.message || e.code || JSON.stringify(e));
+      message += `: ${msgs.join("; ")}`;
+    } else if (body.message) {
       message += `: ${body.message}`;
     } else if (body.error) {
       message += `: ${body.error}`;

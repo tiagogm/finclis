@@ -1,4 +1,5 @@
 import { wiseGet, wisePost, requireSession, setVerbose } from "../client.js";
+import { setScaVerbose } from "../sca.js";
 import { prompt } from "../auth.js";
 import { validateCurrency, validateBalanceId } from "../validate.js";
 import crypto from "node:crypto";
@@ -18,7 +19,10 @@ export async function sendCommand(
   opts: SendOpts
 ): Promise<void> {
   try {
-    if (opts.verbose) setVerbose(true);
+    if (opts.verbose) {
+      setVerbose(true);
+      setScaVerbose(true);
+    }
 
     const session = requireSession();
     const profileId = session.profileId;

@@ -3,10 +3,10 @@
 ## Next steps
 
 - [ ] Fix statements command — currently returns 404, endpoint path likely wrong
-- [ ] Implement `send` command — full transfer flow (quote → transfer-requirements → transfer → payment with SCA)
+- [x] Implement `send` command — full transfer flow (quote → transfer-requirements → transfer → payment with SCA)
 - [ ] Implement `recipients` command — list saved recipients
 - [ ] Implement `recipient` command — get/create recipient details
-- [ ] Add `--yes` flag to `move` and `send` — skip confirmation prompt for scripted use
+- [ ] Add `--yes` flag to `move` — skip confirmation prompt for scripted use (send already has it)
 
 ## Code quality
 

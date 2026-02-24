@@ -17,7 +17,7 @@ export async function transfersCommand(): Promise<void> {
       const source = `${t.sourceValue} ${t.sourceCurrency}`;
       const target = `${t.targetValue} ${t.targetCurrency}`;
       const status = t.status;
-      console.log(`${created}\t${source} → ${target}\t${status}`);
+      console.log(`[${t.id}]\t${created}\t${source} → ${target}\t${status}`);
     }
   } catch (err: any) {
     console.error(`Failed: ${err.message}`);

@@ -14,114 +14,210 @@ export async function isScaChallenge(res: Response): Promise<string | null> {
   if (res.status === 403) {
     const ott = res.headers.get("x-2fa-approval");
     if (scaVerbose) {
-      console.error(`SCA headers: x-2fa-approval=${ott}`);
-      console.error(`SCA headers: x-2fa-approval-result=${res.headers.get("x-2fa-approval-result")}`);
-      try {
-        const body = await res.clone().json();
-        console.error(`SCA 403 body: ${JSON.stringify(body)}`);
-      } catch {}
-    } else {
-      // Drain the response body to release the connection
-      await res.text().catch(() => {});
+      console.error(`SCA: x-2fa-approval=${ott}`);
+      console.error(`SCA: x-2fa-approval-result=${res.headers.get("x-2fa-approval-result")}`);
     }
+    // Drain body to release connection
+    await res.text().catch(() => {});
     return ott;
   }
   return null;
 }
 
+interface Challenge {
+  primaryChallenge: { type: string };
+  alternatives: { type: string }[];
+  required: boolean;
+  passed: boolean;
+}
+
 /**
- * Handle an SCA challenge:
- * 1. Try password-based OTT
- * 2. If 404, try SMS-based OTT
- * 3. Prompt user and verify
+ * Handle an SCA challenge using the One Time Token framework:
+ * 1. GET /v1/one-time-token/status — discover required challenges
+ * 2. Trigger + verify each required challenge
  */
 export async function handleScaChallenge(
   ott: string,
   token: string
 ): Promise<void> {
-  const authHeaders = {
+  const headers = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
+    "One-Time-Token": ott,
   };
 
-  // Try password trigger first
-  if (scaVerbose) console.error(`-> POST ${API_URL}/v1/one-time-token/password/trigger`);
-  const triggerRes = await fetch(
-    `${API_URL}/v1/one-time-token/password/trigger`,
-    {
-      method: "POST",
-      headers: authHeaders,
-      body: JSON.stringify({ oneTimeToken: ott }),
-    }
-  );
+  // Step 1: Get OTT status to discover required challenges
+  if (scaVerbose) console.error(`-> GET ${API_URL}/v1/one-time-token/status`);
+  const statusRes = await fetch(`${API_URL}/v1/one-time-token/status`, {
+    headers,
+  });
+  if (scaVerbose) console.error(`<- ${statusRes.status}`);
+
+  if (!statusRes.ok) {
+    throw new Error(`SCA status check failed (${statusRes.status})`);
+  }
+
+  const status = await statusRes.json();
+  const challenges: Challenge[] = status.oneTimeTokenProperties?.challenges || [];
+
+  if (scaVerbose) {
+    console.error(`SCA challenges: ${JSON.stringify(challenges.map(c => ({
+      type: c.primaryChallenge.type,
+      required: c.required,
+      passed: c.passed,
+      alternatives: c.alternatives?.map(a => a.type),
+    })))}`);
+  }
+
+  // Step 2: Find required, unpassed challenges
+  const pending = challenges.filter(c => c.required && !c.passed);
+  if (pending.length === 0) {
+    if (scaVerbose) console.error("SCA: no pending challenges, OTT should be ready");
+    return;
+  }
+
+  for (const challenge of pending) {
+    const type = challenge.primaryChallenge.type;
+    await resolveChallenge(type, headers);
+  }
+}
+
+/**
+ * Trigger and verify a single challenge by type.
+ */
+async function resolveChallenge(
+  type: string,
+  headers: Record<string, string>
+): Promise<void> {
+  switch (type) {
+    case "SMS":
+      return await handleSmsChallenge(headers);
+    case "WHATSAPP":
+      return await handleWhatsappChallenge(headers);
+    case "VOICE":
+      return await handleVoiceChallenge(headers);
+    case "PIN":
+      return await handlePinChallenge(headers);
+    default:
+      throw new Error(
+        `SCA requires "${type}" challenge which this CLI doesn't support. ` +
+        `Complete the transfer at wise.com instead.`
+      );
+  }
+}
+
+async function handleSmsChallenge(headers: Record<string, string>): Promise<void> {
+  // Trigger
+  if (scaVerbose) console.error(`-> POST ${API_URL}/v1/one-time-token/sms/trigger`);
+  const triggerRes = await fetch(`${API_URL}/v1/one-time-token/sms/trigger`, {
+    method: "POST",
+    headers,
+  });
   if (scaVerbose) console.error(`<- ${triggerRes.status}`);
 
-  if (triggerRes.ok) {
-    console.log("SCA required — enter your Wise password.");
-    const password = await prompt("Password: ", true);
-
-    if (scaVerbose) console.error(`-> POST ${API_URL}/v1/identity/one-time-token/password/verify`);
-    const verifyRes = await fetch(
-      `${API_URL}/v1/identity/one-time-token/password/verify`,
-      {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({ oneTimeToken: ott, password }),
-      }
-    );
-    if (scaVerbose) console.error(`<- ${verifyRes.status}`);
-
-    if (!verifyRes.ok) {
-      throw new Error(`SCA verification failed (${verifyRes.status}). Check your password.`);
-    }
-    console.log("SCA verified.");
-    return;
+  if (!triggerRes.ok) {
+    throw new Error(`SCA SMS trigger failed (${triggerRes.status})`);
   }
 
-  // Password trigger failed — try SMS
-  if (scaVerbose) {
-    try {
-      const body = await triggerRes.json();
-      console.error(`<- password trigger body: ${JSON.stringify(body)}`);
-    } catch {}
-    console.error(`-> POST ${API_URL}/v1/one-time-token/sms/trigger`);
+  const triggerBody = await triggerRes.json();
+  const phone = triggerBody.obfuscatedPhoneNo || "your phone";
+  console.log(`SCA required — SMS code sent to ${phone}`);
+
+  const code = await prompt("SMS code: ");
+
+  // Verify
+  if (scaVerbose) console.error(`-> POST ${API_URL}/v1/one-time-token/sms/verify`);
+  const verifyRes = await fetch(`${API_URL}/v1/one-time-token/sms/verify`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ otpCode: code.trim() }),
+  });
+  if (scaVerbose) console.error(`<- ${verifyRes.status}`);
+
+  if (!verifyRes.ok) {
+    throw new Error(`SCA SMS verification failed (${verifyRes.status}). Check the code.`);
+  }
+  console.log("SCA verified.");
+}
+
+async function handleWhatsappChallenge(headers: Record<string, string>): Promise<void> {
+  if (scaVerbose) console.error(`-> POST ${API_URL}/v1/one-time-token/whatsapp/trigger`);
+  const triggerRes = await fetch(`${API_URL}/v1/one-time-token/whatsapp/trigger`, {
+    method: "POST",
+    headers,
+  });
+  if (scaVerbose) console.error(`<- ${triggerRes.status}`);
+
+  if (!triggerRes.ok) {
+    throw new Error(`SCA WhatsApp trigger failed (${triggerRes.status})`);
   }
 
-  const smsTriggerRes = await fetch(
-    `${API_URL}/v1/one-time-token/sms/trigger`,
-    {
-      method: "POST",
-      headers: authHeaders,
-      body: JSON.stringify({ oneTimeToken: ott }),
-    }
-  );
-  if (scaVerbose) console.error(`<- ${smsTriggerRes.status}`);
+  const triggerBody = await triggerRes.json();
+  const phone = triggerBody.obfuscatedPhoneNo || "your phone";
+  console.log(`SCA required — WhatsApp code sent to ${phone}`);
 
-  if (smsTriggerRes.ok) {
-    console.log("SCA required — check your phone for an SMS code.");
-    const code = await prompt("SMS code: ");
+  const code = await prompt("WhatsApp code: ");
 
-    if (scaVerbose) console.error(`-> POST ${API_URL}/v1/identity/one-time-token/sms/verify`);
-    const verifyRes = await fetch(
-      `${API_URL}/v1/identity/one-time-token/sms/verify`,
-      {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({ oneTimeToken: ott, otp: code }),
-      }
-    );
-    if (scaVerbose) console.error(`<- ${verifyRes.status}`);
+  if (scaVerbose) console.error(`-> POST ${API_URL}/v1/one-time-token/whatsapp/verify`);
+  const verifyRes = await fetch(`${API_URL}/v1/one-time-token/whatsapp/verify`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ otpCode: code.trim() }),
+  });
+  if (scaVerbose) console.error(`<- ${verifyRes.status}`);
 
-    if (!verifyRes.ok) {
-      throw new Error(`SCA verification failed (${verifyRes.status}). Check the code.`);
-    }
-    console.log("SCA verified.");
-    return;
+  if (!verifyRes.ok) {
+    throw new Error(`SCA WhatsApp verification failed (${verifyRes.status}).`);
+  }
+  console.log("SCA verified.");
+}
+
+async function handleVoiceChallenge(headers: Record<string, string>): Promise<void> {
+  if (scaVerbose) console.error(`-> POST ${API_URL}/v1/one-time-token/voice/trigger`);
+  const triggerRes = await fetch(`${API_URL}/v1/one-time-token/voice/trigger`, {
+    method: "POST",
+    headers,
+  });
+  if (scaVerbose) console.error(`<- ${triggerRes.status}`);
+
+  if (!triggerRes.ok) {
+    throw new Error(`SCA voice trigger failed (${triggerRes.status})`);
   }
 
-  // Both failed
-  throw new Error(
-    `SCA trigger failed — password (${triggerRes.status}), SMS (${smsTriggerRes.status}). ` +
-    `Your token may not support SCA via these methods.`
-  );
+  const triggerBody = await triggerRes.json();
+  const phone = triggerBody.obfuscatedPhoneNo || "your phone";
+  console.log(`SCA required — voice call to ${phone}`);
+
+  const code = await prompt("Voice code: ");
+
+  if (scaVerbose) console.error(`-> POST ${API_URL}/v1/one-time-token/voice/verify`);
+  const verifyRes = await fetch(`${API_URL}/v1/one-time-token/voice/verify`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ otpCode: code.trim() }),
+  });
+  if (scaVerbose) console.error(`<- ${verifyRes.status}`);
+
+  if (!verifyRes.ok) {
+    throw new Error(`SCA voice verification failed (${verifyRes.status}).`);
+  }
+  console.log("SCA verified.");
+}
+
+async function handlePinChallenge(headers: Record<string, string>): Promise<void> {
+  console.log("SCA required — enter your Wise PIN.");
+  const pin = await prompt("PIN: ", true);
+
+  if (scaVerbose) console.error(`-> POST ${API_URL}/v1/one-time-token/pin/verify`);
+  const verifyRes = await fetch(`${API_URL}/v1/one-time-token/pin/verify`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ pin: pin.trim() }),
+  });
+  if (scaVerbose) console.error(`<- ${verifyRes.status}`);
+
+  if (!verifyRes.ok) {
+    throw new Error(`SCA PIN verification failed (${verifyRes.status}). Check your PIN.`);
+  }
+  console.log("SCA verified.");
 }

@@ -1,4 +1,5 @@
 import { wiseGet, getProfileId } from "../client.js";
+import { validateCurrency, validateDate } from "../validate.js";
 
 interface StatementOpts {
   currency: string;
@@ -9,9 +10,10 @@ interface StatementOpts {
 export async function statementsCommand(opts: StatementOpts): Promise<void> {
   try {
     const profileId = getProfileId();
-    const currency = opts.currency.toUpperCase();
+    const currency = validateCurrency(opts.currency);
+    const fromDate = validateDate(opts.from);
+    const toDate = validateDate(opts.to);
 
-    // First get the balance ID for this currency
     const balances = await wiseGet(
       `/v4/profiles/${profileId}/balances?types=STANDARD`
     );
@@ -21,19 +23,18 @@ export async function statementsCommand(opts: StatementOpts): Promise<void> {
       process.exit(1);
     }
 
-    // Fetch statement — this endpoint requires SCA
+    const balanceId = balance.id || balance.balanceId;
+
     const params = new URLSearchParams({
       currency,
-      intervalStart: new Date(opts.from).toISOString(),
-      intervalEnd: new Date(opts.to).toISOString(),
+      intervalStart: new Date(fromDate).toISOString(),
+      intervalEnd: new Date(toDate).toISOString(),
       type: "FLAT",
     });
 
-    const statement = await wiseGet(
-      `/v3/profiles/${profileId}/balance-statements/${balance.id}/statement/flat?${params}`
-    );
+    const url = `/v3/profiles/${profileId}/balance-statements/${balanceId}/statement/flat?${params}`;
+    const statement = await wiseGet(url);
 
-    // Print transactions
     if (!statement.transactions || statement.transactions.length === 0) {
       console.log("No transactions found.");
       return;

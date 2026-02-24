@@ -31,3 +31,24 @@ export function validateBalanceId(value: string): number {
   }
   return id;
 }
+
+const MONTH_RE = /^(\d{1,2})-(\d{4})$/;
+
+export function parseMonth(value: string): { month: number; year: number } | null {
+  const m = MONTH_RE.exec(value);
+  if (!m) return null;
+  const month = parseInt(m[1], 10);
+  const year = parseInt(m[2], 10);
+  if (month < 1 || month > 12) return null;
+  return { month, year };
+}
+
+export function monthBounds(month: number, year: number): { since: string; until: string } {
+  const since = new Date(Date.UTC(year, month - 1, 1));
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const until = new Date(Date.UTC(year, month - 1, lastDay, 23, 59, 59, 999));
+  return {
+    since: since.toISOString(),
+    until: until.toISOString(),
+  };
+}

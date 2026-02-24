@@ -77,9 +77,36 @@ export async function handleScaChallenge(
   }
 
   for (const challenge of pending) {
-    const type = challenge.primaryChallenge.type;
-    await resolveChallenge(type, headers);
+    const chosen = pickCliChallenge(challenge);
+    if (!chosen) {
+      const allTypes = [
+        challenge.primaryChallenge.type,
+        ...(challenge.alternatives?.map(a => a.type) || []),
+      ];
+      throw new Error(
+        `SCA requires one of [${allTypes.join(", ")}] which this CLI doesn't support. ` +
+        `Complete the transfer at wise.com instead.`
+      );
+    }
+    await resolveChallenge(chosen, headers);
   }
+}
+
+// Challenge types this CLI can handle, in preference order
+const CLI_SUPPORTED = ["PASSWORD", "SMS", "WHATSAPP", "VOICE", "PIN"];
+
+/**
+ * Pick the best CLI-compatible challenge from primary + alternatives.
+ */
+function pickCliChallenge(challenge: Challenge): string | null {
+  const candidates = [
+    challenge.primaryChallenge.type,
+    ...(challenge.alternatives?.map(a => a.type) || []),
+  ];
+  for (const preferred of CLI_SUPPORTED) {
+    if (candidates.includes(preferred)) return preferred;
+  }
+  return null;
 }
 
 /**
@@ -89,7 +116,10 @@ async function resolveChallenge(
   type: string,
   headers: Record<string, string>
 ): Promise<void> {
+  if (scaVerbose) console.error(`SCA: using ${type} challenge`);
   switch (type) {
+    case "PASSWORD":
+      return await handlePasswordChallenge(headers);
     case "SMS":
       return await handleSmsChallenge(headers);
     case "WHATSAPP":
@@ -98,12 +128,38 @@ async function resolveChallenge(
       return await handleVoiceChallenge(headers);
     case "PIN":
       return await handlePinChallenge(headers);
-    default:
-      throw new Error(
-        `SCA requires "${type}" challenge which this CLI doesn't support. ` +
-        `Complete the transfer at wise.com instead.`
-      );
   }
+}
+
+async function handlePasswordChallenge(headers: Record<string, string>): Promise<void> {
+  // Trigger
+  if (scaVerbose) console.error(`-> POST ${API_URL}/v1/one-time-token/password/trigger`);
+  const triggerRes = await fetch(`${API_URL}/v1/one-time-token/password/trigger`, {
+    method: "POST",
+    headers,
+  });
+  if (scaVerbose) console.error(`<- ${triggerRes.status}`);
+
+  if (!triggerRes.ok) {
+    throw new Error(`SCA password trigger failed (${triggerRes.status})`);
+  }
+
+  console.log("SCA required — enter your Wise password.");
+  const password = await prompt("Password: ", true);
+
+  // Verify
+  if (scaVerbose) console.error(`-> POST ${API_URL}/v1/identity/one-time-token/password/verify`);
+  const verifyRes = await fetch(`${API_URL}/v1/identity/one-time-token/password/verify`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ password: password.trim() }),
+  });
+  if (scaVerbose) console.error(`<- ${verifyRes.status}`);
+
+  if (!verifyRes.ok) {
+    throw new Error(`SCA password verification failed (${verifyRes.status}). Check your password.`);
+  }
+  console.log("SCA verified.");
 }
 
 async function handleSmsChallenge(headers: Record<string, string>): Promise<void> {

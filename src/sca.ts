@@ -1,8 +1,8 @@
-// src/sca.ts
-import { BASE_URL } from "./auth.js";
+import { API_URL, prompt } from "./auth.js";
 
 /**
  * Check if a response is an SCA challenge (403 with x-2fa-approval header).
+ * Returns the one-time-token (OTT) if present, null otherwise.
  */
 export function isScaChallenge(res: Response): string | null {
   if (res.status === 403) {
@@ -12,15 +12,18 @@ export function isScaChallenge(res: Response): string | null {
 }
 
 /**
- * Trigger an SCA challenge and wait for device approval.
+ * Handle an SCA challenge:
+ * 1. Trigger the OTT challenge
+ * 2. Prompt user for their password
+ * 3. Verify with password
  */
 export async function handleScaChallenge(
   ott: string,
   token: string
 ): Promise<void> {
-  // Trigger the SCA challenge
+  // Step 1: Trigger the SCA challenge
   const triggerRes = await fetch(
-    `${BASE_URL}/v1/one-time-token/password/trigger`,
+    `${API_URL}/v1/one-time-token/password/trigger`,
     {
       method: "POST",
       headers: {
@@ -35,36 +38,27 @@ export async function handleScaChallenge(
     throw new Error(`SCA trigger failed (${triggerRes.status})`);
   }
 
-  console.log("SCA required — approve on your Wise app...");
+  console.log("SCA required.");
 
-  // Poll for approval
-  const maxAttempts = 60; // 2 minutes at 2s intervals
-  for (let i = 0; i < maxAttempts; i++) {
-    await new Promise((r) => setTimeout(r, 2000));
+  // Step 2: Ask for password
+  const password = await prompt("Password: ", true);
 
-    const checkRes = await fetch(
-      `${BASE_URL}/v1/one-time-token/password/verify`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ oneTimeToken: ott }),
-      }
-    );
-
-    if (checkRes.ok) {
-      console.log("SCA approved.");
-      return;
+  // Step 3: Verify with password
+  const verifyRes = await fetch(
+    `${API_URL}/v1/identity/one-time-token/password/verify`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ oneTimeToken: ott, password }),
     }
+  );
 
-    // If still pending, continue polling
-    if (checkRes.status === 403) continue;
-
-    // Unexpected status
-    throw new Error(`SCA verify unexpected status: ${checkRes.status}`);
+  if (!verifyRes.ok) {
+    throw new Error(`SCA verification failed (${verifyRes.status}). Check your password.`);
   }
 
-  throw new Error("SCA approval timed out");
+  console.log("SCA verified.");
 }

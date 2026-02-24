@@ -2,7 +2,7 @@ import { test, describe, beforeEach, afterEach, expect } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { saveSession, loadSession, clearSession, touchSession } from "./auth.js";
+import { saveSession, loadSession, clearSession } from "./auth.js";
 
 // Use a temp dir instead of real ~/.wise-cli
 const testDir = path.join(os.tmpdir(), "wise-cli-test-" + Date.now());
@@ -25,10 +25,38 @@ describe("session storage", () => {
   });
 
   test("loadSession reads token from disk", () => {
-    const session = { token: "abc-123", profileId: 456 };
+    const session = { token: "abc-123", profileId: 456, createdAt: Date.now() };
     fs.writeFileSync(testSessionPath, JSON.stringify(session));
     const loaded = loadSession(testSessionPath);
     expect(loaded).toEqual(session);
+  });
+
+  test("loadSession rejects session without createdAt", () => {
+    const session = { token: "abc-123", profileId: 456 };
+    fs.writeFileSync(testSessionPath, JSON.stringify(session));
+    const loaded = loadSession(testSessionPath);
+    expect(loaded).toBeNull();
+  });
+
+  test("loadSession rejects empty token", () => {
+    const session = { token: "", profileId: 456, createdAt: Date.now() };
+    fs.writeFileSync(testSessionPath, JSON.stringify(session));
+    const loaded = loadSession(testSessionPath);
+    expect(loaded).toBeNull();
+  });
+
+  test("loadSession rejects negative ttlMs", () => {
+    const session = { token: "abc-123", profileId: 456, createdAt: Date.now(), ttlMs: -1 };
+    fs.writeFileSync(testSessionPath, JSON.stringify(session));
+    const loaded = loadSession(testSessionPath);
+    expect(loaded).toBeNull();
+  });
+
+  test("loadSession rejects zero profileId", () => {
+    const session = { token: "abc-123", profileId: 0, createdAt: Date.now() };
+    fs.writeFileSync(testSessionPath, JSON.stringify(session));
+    const loaded = loadSession(testSessionPath);
+    expect(loaded).toBeNull();
   });
 
   test("loadSession returns null when no file exists", () => {
@@ -61,15 +89,6 @@ describe("session storage", () => {
     fs.writeFileSync(testSessionPath, JSON.stringify(session));
     const loaded = loadSession(testSessionPath);
     expect(loaded).toEqual(session);
-  });
-
-  test("touchSession bumps createdAt", () => {
-    const oldTime = Date.now() - 30 * 60 * 1000;
-    const session = { token: "abc-123", profileId: 456, createdAt: oldTime };
-    fs.writeFileSync(testSessionPath, JSON.stringify(session));
-    touchSession(testSessionPath);
-    const raw = JSON.parse(fs.readFileSync(testSessionPath, "utf-8"));
-    expect(raw.createdAt).toBeGreaterThan(oldTime);
   });
 
   test("clearSession deletes the file", () => {

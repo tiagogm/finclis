@@ -1,36 +1,32 @@
-import { API_URL, loadSession, clearSession } from "../auth.js";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { invalidateSession } from "../auth.js";
+
+const SESSION_PATH = path.join(os.homedir(), ".wise-cli", "session.json");
 
 export async function logoutCommand(): Promise<void> {
-  const session = loadSession();
+  let token: string | null = null;
+  try {
+    const raw = fs.readFileSync(SESSION_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.token === "string") {
+      token = parsed.token;
+    }
+  } catch {
+    // no file
+  }
 
-  if (!session) {
+  if (!token) {
     console.log("No active session.");
     return;
   }
 
-  // Try to invalidate the token via API
   try {
-    await fetch(`${API_URL}/v1/logout`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${session.token}` },
-    });
-  } catch {
-    // Best-effort — don't fail logout if API call fails
+    await invalidateSession(token);
+    console.log("Logged out.");
+  } catch (err: any) {
+    console.error(`Logout failed: ${err.message}`);
+    process.exit(1);
   }
-
-  // Clear local session file
-  clearSession();
-
-  // Clean up browser profile
-  const browserDir = path.join(os.homedir(), ".wise-cli", "browser-profile");
-  try {
-    fs.rmSync(browserDir, { recursive: true, force: true });
-  } catch {
-    // best-effort
-  }
-
-  console.log("Logged out. Session cleared.");
 }

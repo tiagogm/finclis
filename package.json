@@ -3,18 +3,20 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "wise": "./node_modules/.bin/tsx src/index.ts"
+    "wise": "./dist/index.js"
   },
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "wise": "tsx src/index.ts",
     "test": "node --loader tsx --test $(find src -name '*.test.ts')"
   },
   "dependencies": {
-    "commander": "^12.0.0"
+    "commander": "^12.0.0",
+    "playwright": "^1.58.2"
   },
   "devDependencies": {
+    "@types/node": "^18.0.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0",
-    "@types/node": "^18.0.0"
+    "typescript": "^5.0.0"
   }
 }

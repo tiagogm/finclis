@@ -37,11 +37,22 @@ wise profiles
 wise balances
 wise statements --currency GBP --from 2025-01-01 --to 2025-01-31
 
+# People
+wise contacts              # browse recent contacts, search by name/tag
+wise recipients            # browse bank recipients, search by name/currency
+
 # Exchange rates
 wise rates EUR GBP
 
 # Transfers
-wise transfers
+wise transfers             # list recent transfers
+wise transfer 1988732492   # get transfer details by ID
+
+# Send money (interactive contact picker + SCA)
+wise send 100 GBP                          # pick contact interactively
+wise send 100 GBP --to 371502272           # send to specific recipient ID
+wise send 100 EUR --target-currency GBP    # cross-currency send
+wise send 50 GBP --to 371502272 --yes -v   # skip confirmation, verbose
 
 # Convert between currencies
 wise move --from EUR --to GBP --amount 100
@@ -63,9 +74,13 @@ wise logout
 | `profiles` | List personal and business profiles |
 | `balances` | Show all balances (standard + savings) |
 | `statements` | Get account statement for a currency and date range |
+| `contacts` | Browse and search Wise contacts (recent + search) |
+| `recipients` | Browse and search saved bank recipients |
 | `rates` | Get live exchange rate between two currencies |
-| `transfers` | List recent transfers |
+| `transfer` | Get transfer details by ID |
+| `transfers` | List recent transfers (with IDs) |
 | `move` | Convert between currencies or move between balances |
+| `send` | Send money to a contact or recipient (quote → transfer → fund) |
 
 ## How it works
 
@@ -78,7 +93,7 @@ Sessions expire after 1 hour by default. Set a custom TTL with `wise login --ttl
 - **Token storage:** OAuth token stored in `~/.wise-cli/session.json` with 0600 permissions. The file is plaintext — any process running as your user can read it.
 - **Session expiry:** Client-side TTL (default 1 hour). The server may keep the token valid longer. Run `wise logout` to revoke server-side.
 - **Browser profile:** Persistent Chromium profile at `~/.wise-cli/browser-profile/` preserves device trust. Auth cookies are cleared on logout.
-- **SCA:** Sensitive operations (e.g. money moves) trigger Wise's Strong Customer Authentication — you'll be prompted for your password in the terminal.
+- **SCA:** Sensitive operations (e.g. sends, money moves) trigger Wise's Strong Customer Authentication. The CLI handles multiple challenge rounds (PASSWORD, SMS, WhatsApp, voice call, PIN) — you'll be prompted in the terminal.
 - **Token interception:** During login, the CLI only captures tokens from `wise.com` and `api.wise.com` responses.
 
 ## Development

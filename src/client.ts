@@ -123,3 +123,37 @@ export async function wisePost(
 
   return res.json();
 }
+
+/**
+ * Make an authenticated PUT request with automatic SCA retry.
+ */
+export async function wisePut(path: string): Promise<any> {
+  const session = requireSession();
+
+  const url = `${API_URL}${path}`;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${session.token}`,
+  };
+
+  if (verbose) console.error(`-> PUT ${url}`);
+  let res = await fetch(url, { method: "PUT", headers });
+  if (verbose) console.error(`<- ${res.status}`);
+
+  const ott = isScaChallenge(res);
+  if (ott) {
+    if (verbose) console.error(`<- 403 (SCA challenge)`);
+    await handleScaChallenge(ott, session.token);
+    if (verbose) console.error(`-> PUT ${url} (SCA retry)`);
+    res = await fetch(url, {
+      method: "PUT",
+      headers: { ...headers, "x-2fa-approval": ott },
+    });
+    if (verbose) console.error(`<- ${res.status}`);
+  }
+
+  if (!res.ok) {
+    throw await apiError(res);
+  }
+
+  return res.json();
+}

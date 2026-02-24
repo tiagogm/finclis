@@ -1,8 +1,17 @@
 import { login } from "../auth.js";
 
-export async function loginCommand(): Promise<void> {
+interface LoginOpts {
+  ttl?: string;
+}
+
+export async function loginCommand(opts: LoginOpts): Promise<void> {
   try {
-    await login();
+    const ttl = opts.ttl ? parseInt(opts.ttl, 10) : undefined;
+    if (opts.ttl && (!ttl || ttl <= 0)) {
+      console.error("TTL must be a positive number (minutes).");
+      process.exit(1);
+    }
+    await login(ttl);
   } catch (err: any) {
     console.error(`Login failed: ${err.message}`);
     process.exit(1);

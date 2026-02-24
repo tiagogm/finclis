@@ -10,9 +10,10 @@ export interface Session {
   token: string;
   profileId: number;
   createdAt?: number; // epoch ms
+  ttlMs?: number;     // custom TTL in ms (set via --ttl flag)
 }
 
-const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
+export const DEFAULT_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 const DEFAULT_SESSION_PATH = path.join(
   os.homedir(),
@@ -44,14 +45,34 @@ export function loadSession(
     }
 
     // Check expiry (skip if no createdAt — backward compat with old sessions)
-    if (parsed.createdAt && Date.now() - parsed.createdAt > SESSION_TTL_MS) {
-      console.error("Session expired. Run: wise login");
-      return null;
+    if (parsed.createdAt) {
+      const ttl = parsed.ttlMs || DEFAULT_TTL_MS;
+      if (Date.now() - parsed.createdAt > ttl) {
+        console.error("Session expired. Run: wise login");
+        return null;
+      }
     }
 
     return parsed as Session;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Bump createdAt to extend the session (rolling expiry).
+ * Called after a successful API request.
+ */
+export function touchSession(sessionPath = DEFAULT_SESSION_PATH): void {
+  try {
+    const raw = fs.readFileSync(sessionPath, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.createdAt) {
+      parsed.createdAt = Date.now();
+      fs.writeFileSync(sessionPath, JSON.stringify(parsed, null, 2), { mode: 0o600 });
+    }
+  } catch {
+    // best-effort
   }
 }
 
@@ -118,7 +139,7 @@ export async function prompt(question: string, hidden = false): Promise<string> 
  * (captcha + 2FA handled by the browser). Once logged in, we intercept
  * the access token from API responses and extract the profile ID.
  */
-export async function login(): Promise<Session> {
+export async function login(ttlMinutes?: number): Promise<Session> {
   const { chromium } = await import("playwright");
 
   console.log("Opening browser for Wise login...");
@@ -239,7 +260,12 @@ export async function login(): Promise<Session> {
     throw new Error("No personal profile found");
   }
 
-  const session: Session = { token: accessToken, profileId: personal.id, createdAt: Date.now() };
+  const session: Session = {
+    token: accessToken,
+    profileId: personal.id,
+    createdAt: Date.now(),
+    ...(ttlMinutes ? { ttlMs: ttlMinutes * 60 * 1000 } : {}),
+  };
   saveSession(session);
   console.log(`Authenticated successfully for profile ${session.profileId}. Session saved.`);
   return session;

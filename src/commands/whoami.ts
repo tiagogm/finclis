@@ -1,4 +1,5 @@
 import { wiseGet, requireSession } from "../client.js";
+import { DEFAULT_TTL_MS } from "../auth.js";
 
 export async function whoamiCommand(): Promise<void> {
   const session = requireSession();
@@ -24,6 +25,19 @@ export async function whoamiCommand(): Promise<void> {
     }
     if (personal.details?.phoneNumber) {
       console.log(`Phone:      ${personal.details.phoneNumber}`);
+    }
+
+    // Session expiry
+    if (session.createdAt) {
+      const ttl = session.ttlMs || DEFAULT_TTL_MS;
+      const expiresAt = session.createdAt + ttl;
+      const remaining = expiresAt - Date.now();
+      if (remaining > 0) {
+        const mins = Math.floor(remaining / 60_000);
+        const hours = Math.floor(mins / 60);
+        const label = hours > 0 ? `${hours}h ${mins % 60}m` : `${mins}m`;
+        console.log(`Expires in: ${label}`);
+      }
     }
 
     // Show business profiles too

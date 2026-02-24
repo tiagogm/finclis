@@ -21,6 +21,7 @@ program
 program
   .command("login")
   .description("Authenticate via browser (email + 2FA)")
+  .option("--ttl <minutes>", "Session TTL in minutes (default: 60)")
   .action(loginCommand);
 
 program

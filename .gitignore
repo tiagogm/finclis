@@ -4,3 +4,4 @@ src/**/*.js
 src/**/*.d.ts
 session.json
 bun.lock
+docs/plans/*

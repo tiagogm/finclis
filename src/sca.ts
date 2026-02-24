@@ -129,6 +129,8 @@ async function resolveChallenge(
       return await handleVoiceChallenge(headers);
     case "PIN":
       return await handlePinChallenge(headers);
+    default:
+      throw new Error(`SCA: unsupported challenge type "${type}"`);
   }
 }
 

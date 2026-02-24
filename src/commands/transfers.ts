@@ -7,7 +7,7 @@ export async function transfersCommand(): Promise<void> {
       `/v1/transfers?profile=${profileId}&limit=20&offset=0`
     );
 
-    if (transfers.length === 0) {
+    if (!Array.isArray(transfers) || transfers.length === 0) {
       console.log("No transfers found.");
       return;
     }

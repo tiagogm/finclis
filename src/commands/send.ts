@@ -144,7 +144,8 @@ export async function sendCommand(
  * Fetch saved recipients and let the user pick one.
  */
 async function pickRecipient(profileId: number): Promise<number> {
-  const recipients = await wiseGet(`/v2/accounts?profile=${profileId}`);
+  const response = await wiseGet(`/v2/accounts?profileId=${profileId}`);
+  const recipients = response?.content;
 
   if (!recipients || recipients.length === 0) {
     console.error("No saved recipients found. Create one at wise.com first, or use --to <id>.");
@@ -154,9 +155,9 @@ async function pickRecipient(profileId: number): Promise<number> {
   console.log("\nRecipients:\n");
   for (let i = 0; i < recipients.length; i++) {
     const r = recipients[i];
-    const name = r.accountHolderName || r.name?.fullName || "Unknown";
-    const curr = r.currency || "";
-    console.log(`  ${i + 1}. ${name} (${curr})`);
+    const name = r.name?.fullName || "Unknown";
+    const summary = r.longAccountSummary || r.accountSummary || r.currency || "";
+    console.log(`  ${i + 1}. ${name} — ${summary}`);
   }
 
   const input = await prompt(`\nSelect recipient [1-${recipients.length}]: `);

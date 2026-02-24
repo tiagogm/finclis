@@ -47,6 +47,10 @@ export async function sendCommand(
       }
       const recipient = await wiseGet(`/v2/accounts/${targetAccount}`);
       recipientCurrency = recipient?.currency;
+      if (!recipientCurrency) {
+        console.error(`Could not determine currency for recipient ${targetAccount}. Use --target-currency to specify.`);
+        process.exit(1);
+      }
     } else {
       const picked = await pickContact(profileId);
       contactId = picked.contactId;

@@ -1,4 +1,4 @@
-import { API_URL, loadSession, Session } from "./auth.js";
+import { API_URL, loadSession, touchSession, Session } from "./auth.js";
 import { isScaChallenge, handleScaChallenge } from "./sca.js";
 
 /**
@@ -66,6 +66,7 @@ export async function wiseGet(path: string): Promise<any> {
     throw await apiError(res);
   }
 
+  touchSession();
   return res.json();
 }
 
@@ -106,5 +107,6 @@ export async function wisePost(
     throw await apiError(res);
   }
 
+  touchSession();
   return res.json();
 }

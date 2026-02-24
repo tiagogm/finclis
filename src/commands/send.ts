@@ -141,34 +141,91 @@ export async function sendCommand(
 }
 
 /**
+ * Fetch all recipients, paginating through the v2 API.
+ */
+async function fetchAllRecipients(profileId: number): Promise<any[]> {
+  const all: any[] = [];
+  let seekPosition: string | null = null;
+
+  do {
+    let url = `/v2/accounts?profileId=${profileId}&size=50`;
+    if (seekPosition) url += `&seekPosition=${seekPosition}`;
+    const response = await wiseGet(url);
+    const page = response?.content;
+    if (!page || page.length === 0) break;
+    all.push(...page);
+    seekPosition = response.seekPositionForNext ?? null;
+  } while (seekPosition);
+
+  return all;
+}
+
+/**
+ * Format a recipient for display: "Name — GBP xxx-8842 (UK sort code)"
+ */
+function formatRecipient(r: any): string {
+  const name = r.name?.fullName || "Unknown";
+  const curr = r.currency || "???";
+
+  // Extract last 4 digits from accountSummary or displayFields
+  const accountNum = r.displayFields?.find((f: any) =>
+    f.key?.includes("accountNumber") || f.key?.includes("iban") || f.key?.includes("clabe")
+  )?.value;
+  const last4 = accountNum?.replace(/\D/g, "")?.slice(-4);
+  const masked = last4 ? `xxx-${last4}` : "";
+
+  // Bank/account type label from first displayField (e.g. "UK sort code")
+  const bankLabel = r.displayFields?.[0]?.label || r.type || "";
+
+  const parts = [name, "—", [curr, masked].filter(Boolean).join(" ")];
+  if (bankLabel) parts.push(`(${bankLabel})`);
+  return parts.join(" ");
+}
+
+/**
  * Fetch saved recipients and let the user pick one.
+ * Supports search: type text to filter, number to select.
  */
 async function pickRecipient(profileId: number): Promise<number> {
-  const response = await wiseGet(`/v2/accounts?profileId=${profileId}`);
-  const recipients = response?.content;
+  const allRecipients = await fetchAllRecipients(profileId);
 
-  if (!recipients || recipients.length === 0) {
+  if (allRecipients.length === 0) {
     console.error("No saved recipients found. Create one at wise.com first, or use --to <id>.");
     process.exit(1);
   }
 
-  console.log("\nRecipients:\n");
-  for (let i = 0; i < recipients.length; i++) {
-    const r = recipients[i];
-    const name = r.name?.fullName || "Unknown";
-    const summary = r.longAccountSummary || r.accountSummary || r.currency || "";
-    console.log(`  ${i + 1}. ${name} — ${summary}`);
+  let filtered = allRecipients;
+
+  while (true) {
+    console.log(`\nRecipients (${filtered.length}):\n`);
+    for (let i = 0; i < filtered.length; i++) {
+      console.log(`  ${i + 1}. ${formatRecipient(filtered[i])}`);
+    }
+
+    const input = (await prompt(`\nSelect [1-${filtered.length}] or search by name/currency: `)).trim();
+
+    // Number = selection
+    const num = parseInt(input, 10);
+    if (!isNaN(num) && num >= 1 && num <= filtered.length) {
+      return filtered[num - 1].id;
+    }
+
+    // Text = filter
+    if (input.length > 0) {
+      const q = input.toLowerCase();
+      filtered = allRecipients.filter((r: any) => {
+        const name = (r.name?.fullName || "").toLowerCase();
+        const curr = (r.currency || "").toLowerCase();
+        const summary = (r.accountSummary || "").toLowerCase();
+        return name.includes(q) || curr.includes(q) || summary.includes(q);
+      });
+
+      if (filtered.length === 0) {
+        console.log(`No recipients matching "${input}".`);
+        filtered = allRecipients;
+      }
+    }
   }
-
-  const input = await prompt(`\nSelect recipient [1-${recipients.length}]: `);
-  const idx = parseInt(input, 10) - 1;
-
-  if (isNaN(idx) || idx < 0 || idx >= recipients.length) {
-    console.error("Invalid selection.");
-    process.exit(1);
-  }
-
-  return recipients[idx].id;
 }
 
 /**

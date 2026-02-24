@@ -1,6 +1,6 @@
 import { wiseGet, wisePost, requireSession, setVerbose } from "../client.js";
 import { prompt } from "../auth.js";
-import { validateCurrency } from "../validate.js";
+import { validateCurrency, validateBalanceId } from "../validate.js";
 import crypto from "node:crypto";
 
 interface SendOpts {
@@ -104,7 +104,7 @@ export async function sendCommand(
       details,
     };
     if (opts.from) {
-      transferBody.sourceAccount = parseInt(opts.from, 10);
+      transferBody.sourceAccount = validateBalanceId(opts.from);
     }
     const transfer = await wisePost("/v1/transfers", transferBody);
 
@@ -200,9 +200,11 @@ async function collectTransferRequirements(
     if (!requirements || !requirements.length) break;
 
     for (const section of requirements) {
+      if (needsRefresh) break;
       if (!section.fields) continue;
 
       for (const field of section.fields) {
+        if (needsRefresh) break;
         if (!field.group) continue;
 
         for (const g of field.group) {
@@ -226,7 +228,7 @@ async function collectTransferRequirements(
             let promptText = `${g.name}`;
             if (g.example) promptText += ` (e.g. ${g.example})`;
             promptText += ": ";
-            const value = await prompt(promptText);
+            const value = (await prompt(promptText)).trim();
 
             if (g.minLength && value.length < g.minLength) {
               console.error(`Must be at least ${g.minLength} characters.`);
@@ -246,6 +248,7 @@ async function collectTransferRequirements(
 
           if (g.refreshRequirementsOnChange) {
             needsRefresh = true;
+            break;
           }
         }
       }

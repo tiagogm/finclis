@@ -8,6 +8,7 @@ import { ratesCommand } from "./commands/rates.js";
 import { statementsCommand } from "./commands/statements.js";
 import { transfersCommand } from "./commands/transfers.js";
 import { moveCommand } from "./commands/move.js";
+import { sendCommand } from "./commands/send.js";
 import { whoamiCommand } from "./commands/whoami.js";
 
 const program = new Command();
@@ -73,5 +74,16 @@ program
   .option("--source-balance <id>", "Source balance ID (for same-currency moves)")
   .option("--target-balance <id>", "Target balance ID (for same-currency moves)")
   .action(moveCommand);
+
+program
+  .command("send <amount> <currency>")
+  .description("Send money to a recipient (quote → transfer → fund)")
+  .option("--to <recipientId>", "Recipient account ID (skips interactive picker)")
+  .option("--from <balanceId>", "Source balance ID")
+  .option("--target-currency <code>", "Target currency (defaults to recipient's currency)")
+  .option("--reference <text>", "Payment reference text")
+  .option("-v, --verbose", "Log HTTP requests")
+  .option("--yes", "Skip confirmation prompt")
+  .action(sendCommand);
 
 program.parse();

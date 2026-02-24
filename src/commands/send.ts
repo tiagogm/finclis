@@ -32,35 +32,36 @@ export async function sendCommand(
 
     // Step 1: Resolve recipient
     let targetAccount: number;
+    let recipientCurrency: string | undefined;
     if (opts.to) {
       targetAccount = parseInt(opts.to, 10);
       if (isNaN(targetAccount) || targetAccount <= 0) {
         console.error(`Invalid recipient ID: "${opts.to}". Expected a positive number.`);
         process.exit(1);
       }
+      // Fetch recipient to get their currency
+      const recipient = await wiseGet(`/v2/accounts/${targetAccount}`);
+      recipientCurrency = recipient?.currency;
     } else {
-      targetAccount = await pickRecipient(profileId);
+      const picked = await pickRecipient(profileId);
+      targetAccount = picked.id;
+      recipientCurrency = picked.currency;
     }
 
     // Step 2: Determine target currency
-    let targetCurrency: string | undefined;
-    if (opts.targetCurrency) {
-      targetCurrency = validateCurrency(opts.targetCurrency);
-    }
+    const targetCurrency = opts.targetCurrency
+      ? validateCurrency(opts.targetCurrency)
+      : recipientCurrency || sourceCurrency;
 
     // Step 3: Create quote
-    console.log(`Creating quote: ${sourceAmount} ${sourceCurrency}...`);
-    const quoteBody: Record<string, any> = {
+    console.log(`Creating quote: ${sourceAmount} ${sourceCurrency} -> ${targetCurrency}...`);
+    const quote = await wisePost(`/v3/profiles/${profileId}/quotes`, {
       sourceCurrency,
+      targetCurrency,
       sourceAmount,
+      targetAccount,
       payOut: "BALANCE",
-    };
-    if (targetCurrency) {
-      quoteBody.targetCurrency = targetCurrency;
-    } else {
-      quoteBody.targetAccount = targetAccount;
-    }
-    const quote = await wisePost(`/v3/profiles/${profileId}/quotes`, quoteBody);
+    });
 
     const balanceOption = quote.paymentOptions?.find(
       (o: any) => o.payIn === "BALANCE" && !o.disabled
@@ -76,14 +77,13 @@ export async function sendCommand(
     );
 
     // Step 5: Confirmation
-    const effectiveTargetCurrency = targetCurrency || quote.targetCurrency || sourceCurrency;
     if (!opts.yes) {
-      console.log(`\nSend ${sourceAmount.toFixed(2)} ${sourceCurrency} -> ${effectiveTargetCurrency}`);
+      console.log(`\nSend ${sourceAmount.toFixed(2)} ${sourceCurrency} -> ${targetCurrency}`);
       console.log(`  Rate          ${quote.rate}`);
       if (balanceOption) {
         console.log(`  Fee           ${balanceOption.fee.total} ${sourceCurrency}`);
         console.log(`  You send      ${sourceAmount.toFixed(2)} ${sourceCurrency}`);
-        console.log(`  They receive  ${balanceOption.targetAmount} ${effectiveTargetCurrency}`);
+        console.log(`  They receive  ${balanceOption.targetAmount} ${targetCurrency}`);
       }
       if (details.reference) {
         console.log(`  Reference     ${details.reference}`);
@@ -186,7 +186,7 @@ function formatRecipient(r: any): string {
  * Fetch saved recipients and let the user pick one.
  * Supports search: type text to filter, number to select.
  */
-async function pickRecipient(profileId: number): Promise<number> {
+async function pickRecipient(profileId: number): Promise<{ id: number; currency: string }> {
   const allRecipients = await fetchAllRecipients(profileId);
 
   if (allRecipients.length === 0) {
@@ -207,7 +207,8 @@ async function pickRecipient(profileId: number): Promise<number> {
     // Number = selection
     const num = parseInt(input, 10);
     if (!isNaN(num) && num >= 1 && num <= filtered.length) {
-      return filtered[num - 1].id;
+      const r = filtered[num - 1];
+      return { id: r.id, currency: r.currency };
     }
 
     // Text = filter

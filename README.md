@@ -2,24 +2,35 @@
 
 Unofficial CLI for Wise (TransferWise). Authenticates via the Wise web login flow (email + 2FA) to access SCA-protected endpoints that the personal API token can't reach.
 
-## Setup
+## Requirements
+
+- [Bun](https://bun.sh) 1.0+
+- Node.js 22+ (for Playwright)
+
+## Install
 
 ```bash
-npm install
-npm run build
+git clone <repo-url> ~/Projects/wise-cli
+cd ~/Projects/wise-cli
+bun install
 ```
 
-Optionally add a shell alias:
+To use `wise` as a command from anywhere, add to your `~/.zshrc`:
 
 ```bash
-alias wise="node /path/to/wise-cli/dist/index.js"
+alias wise="bun /Users/$(whoami)/Projects/wise-cli/wise"
 ```
+
+Then `source ~/.zshrc` or open a new terminal.
 
 ## Usage
 
 ```bash
-# Authenticate (opens browser)
+# Authenticate (opens browser for email + 2FA)
 wise login
+
+# Check session
+wise whoami
 
 # Account info
 wise profiles
@@ -42,16 +53,13 @@ wise move --from EUR --to EUR --amount 50 --source-balance 123 --target-balance 
 wise logout
 ```
 
-## How it works
-
-Login opens a real Chromium browser via Playwright so you can complete email + 2FA normally. The CLI captures the OAuth token from the browser session and stores it at `~/.wise-cli/session.json`. All subsequent commands use this token to call the Wise API.
-
 ## Commands
 
 | Command | Description |
 |---------|-------------|
 | `login` | Authenticate via browser (email + 2FA) |
 | `logout` | Log out and invalidate session |
+| `whoami` | Check session validity and show account info |
 | `profiles` | List personal and business profiles |
 | `balances` | Show all balances (standard + savings) |
 | `statements` | Get account statement for a currency and date range |
@@ -59,7 +67,14 @@ Login opens a real Chromium browser via Playwright so you can complete email + 2
 | `transfers` | List recent transfers |
 | `move` | Convert between currencies or move between balances |
 
-## Requirements
+## How it works
 
-- Node.js 18+
-- Playwright (installed automatically with `npm install`)
+Login opens a real Chromium browser via Playwright so you can complete email + 2FA normally. The CLI captures the OAuth token from the browser session and stores it at `~/.wise-cli/session.json` (mode 0600, directory mode 0700). All subsequent commands use this token to call the Wise API. Sessions expire after 12 hours.
+
+## Development
+
+```bash
+bun install         # install dependencies
+bun test            # run tests
+bun run typecheck   # type check with tsc
+```

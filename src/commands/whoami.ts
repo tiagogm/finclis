@@ -33,9 +33,10 @@ export async function whoamiCommand(): Promise<void> {
       const expiresAt = session.createdAt + ttl;
       const remaining = expiresAt - Date.now();
       if (remaining > 0) {
-        const mins = Math.floor(remaining / 60_000);
+        const secs = Math.floor(remaining / 1000);
+        const mins = Math.floor(secs / 60);
         const hours = Math.floor(mins / 60);
-        const label = hours > 0 ? `${hours}h ${mins % 60}m` : `${mins}m`;
+        const label = hours > 0 ? `${hours}h ${mins % 60}m` : mins > 0 ? `${mins}m` : `${secs}s`;
         console.log(`Expires in: ${label}`);
       }
     }

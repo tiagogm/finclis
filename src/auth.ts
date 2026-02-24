@@ -40,39 +40,42 @@ export function loadSession(
     const parsed = JSON.parse(raw);
 
     // Validate structure
-    if (!parsed || typeof parsed.token !== "string" || typeof parsed.profileId !== "number") {
+    if (
+      !parsed ||
+      typeof parsed.token !== "string" ||
+      !parsed.token ||
+      typeof parsed.profileId !== "number" ||
+      parsed.profileId <= 0
+    ) {
+      console.error("Invalid session. Run: wise login");
       return null;
     }
 
-    // Check expiry (skip if no createdAt — backward compat with old sessions)
-    if (parsed.createdAt) {
-      const ttl = parsed.ttlMs || DEFAULT_TTL_MS;
-      if (Date.now() - parsed.createdAt > ttl) {
-        console.error("Session expired. Run: wise login");
-        return null;
-      }
+    // Require createdAt — sessions without it are treated as expired
+    if (typeof parsed.createdAt !== "number" || parsed.createdAt <= 0) {
+      clearSession(sessionPath);
+      console.error("Invalid session. Run: wise login");
+      return null;
+    }
+
+    // Validate ttlMs if present — must be positive
+    if (parsed.ttlMs !== undefined && (typeof parsed.ttlMs !== "number" || parsed.ttlMs <= 0)) {
+      clearSession(sessionPath);
+      console.error("Invalid session. Run: wise login");
+      return null;
+    }
+
+    // Check expiry
+    const ttl = parsed.ttlMs || DEFAULT_TTL_MS;
+    if (Date.now() - parsed.createdAt > ttl) {
+      console.error("Session expired. Run: wise logout to revoke token, or wise login.");
+      return null;
     }
 
     return parsed as Session;
   } catch {
+    console.error("Not logged in. Run: wise login");
     return null;
-  }
-}
-
-/**
- * Bump createdAt to extend the session (rolling expiry).
- * Called after a successful API request.
- */
-export function touchSession(sessionPath = DEFAULT_SESSION_PATH): void {
-  try {
-    const raw = fs.readFileSync(sessionPath, "utf-8");
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.createdAt) {
-      parsed.createdAt = Date.now();
-      fs.writeFileSync(sessionPath, JSON.stringify(parsed, null, 2), { mode: 0o600 });
-    }
-  } catch {
-    // best-effort
   }
 }
 
@@ -81,6 +84,74 @@ export function clearSession(sessionPath = DEFAULT_SESSION_PATH): void {
     fs.unlinkSync(sessionPath);
   } catch {
     // file doesn't exist, that's fine
+  }
+}
+
+/**
+ * Revoke the token server-side, clear auth cookies from the browser profile,
+ * then delete the session file.
+ * Always call this instead of clearSession directly.
+ */
+export async function invalidateSession(
+  token: string,
+  sessionPath = DEFAULT_SESSION_PATH
+): Promise<void> {
+  // Revoke token server-side — wise.com/logout clears the session via redirect + Set-Cookie
+  const res = await fetch(`${BASE_URL}/logout`, {
+    headers: {
+      Cookie: `oauthToken=${token}`,
+    },
+    redirect: "manual",
+  });
+
+  // 307 redirect means the logout endpoint responded — cookies are being cleared server-side
+  if (res.status !== 307 && !res.ok) {
+    throw new Error(`Logout returned ${res.status}. Session not cleared.`);
+  }
+
+  console.log(`Token revoked (${res.status}).`);
+
+  // Clear auth cookies from the browser profile (preserve Turnstile/device trust)
+  await clearBrowserAuthCookies();
+
+  clearSession(sessionPath);
+}
+
+/**
+ * Clear Wise auth cookies from the persistent browser profile.
+ * Preserves Turnstile/captcha trust and device fingerprint cookies
+ * so re-login doesn't require full captcha/2FA again.
+ */
+async function clearBrowserAuthCookies(): Promise<void> {
+  const browserDir = path.join(os.homedir(), ".wise-cli", "browser-profile");
+  if (!fs.existsSync(browserDir)) return;
+
+  const AUTH_COOKIES = ["oauthToken", "userToken", "rememberedDevice", "session"];
+
+  try {
+    const { chromium } = await import("playwright");
+    const context = await chromium.launchPersistentContext(browserDir, {
+      headless: true,
+    });
+
+    const cookies = await context.cookies();
+    const authCookies = cookies.filter((c) => AUTH_COOKIES.includes(c.name));
+    if (authCookies.length > 0) {
+      await context.clearCookies({ name: new RegExp(`^(${AUTH_COOKIES.join("|")})$`) });
+      console.log(`Cleared ${authCookies.length} auth cookie(s) from browser profile.`);
+    }
+
+    // Clear localStorage for wise.com origins
+    for (const page of context.pages()) {
+      await page.close();
+    }
+    const page = await context.newPage();
+    await page.goto("https://wise.com/blank", { waitUntil: "commit" }).catch(() => {});
+    await page.evaluate(() => localStorage.clear()).catch(() => {});
+
+    await context.close();
+  } catch {
+    // Best-effort — browser profile may not exist or Playwright may not be installed
   }
 }
 
@@ -162,10 +233,11 @@ export async function login(ttlMinutes?: number): Promise<Session> {
   // Intercept API responses to capture the access token
   let accessToken: string | null = null;
 
-  // Capture token from ANY response that contains access_token
+  // Capture token from Wise API responses only
   page.on("response", async (response) => {
     if (accessToken) return; // already got it
     const url = response.url();
+    if (!url.startsWith("https://wise.com") && !url.startsWith("https://api.wise.com")) return;
     const contentType = response.headers()["content-type"] || "";
     if (!contentType.includes("json")) return;
 

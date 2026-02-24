@@ -1,6 +1,12 @@
 import { API_URL, loadSession, Session } from "./auth.js";
 import { isScaChallenge, handleScaChallenge } from "./sca.js";
 
+let verbose = false;
+
+export function setVerbose(enabled: boolean): void {
+  verbose = enabled;
+}
+
 /**
  * Extract a human-readable error message from an API response.
  * Avoids dumping raw response bodies that may contain tokens or PII.
@@ -51,14 +57,19 @@ export async function wiseGet(path: string): Promise<any> {
     Authorization: `Bearer ${session.token}`,
   };
 
+  if (verbose) console.error(`-> GET ${url}`);
   let res = await fetch(url, { headers });
+  if (verbose) console.error(`<- ${res.status}`);
 
   const ott = isScaChallenge(res);
   if (ott) {
+    if (verbose) console.error(`<- 403 (SCA challenge)`);
     await handleScaChallenge(ott, session.token);
+    if (verbose) console.error(`-> GET ${url} (SCA retry)`);
     res = await fetch(url, {
       headers: { ...headers, "x-2fa-approval": ott },
     });
+    if (verbose) console.error(`<- ${res.status}`);
   }
 
   if (!res.ok) {
@@ -85,20 +96,25 @@ export async function wisePost(
     ...extraHeaders,
   };
 
+  if (verbose) console.error(`-> POST ${url}`);
   let res = await fetch(url, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
   });
+  if (verbose) console.error(`<- ${res.status}`);
 
   const ott = isScaChallenge(res);
   if (ott) {
+    if (verbose) console.error(`<- 403 (SCA challenge)`);
     await handleScaChallenge(ott, session.token);
+    if (verbose) console.error(`-> POST ${url} (SCA retry)`);
     res = await fetch(url, {
       method: "POST",
       headers: { ...headers, "x-2fa-approval": ott },
       body: JSON.stringify(body),
     });
+    if (verbose) console.error(`<- ${res.status}`);
   }
 
   if (!res.ok) {

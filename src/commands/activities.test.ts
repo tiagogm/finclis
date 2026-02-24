@@ -1,5 +1,5 @@
 import { test, describe, expect } from "bun:test";
-import { formatTitle, monthLabel } from "./activities.js";
+import { formatTitle, monthLabel, formatAmount } from "./activities.js";
 
 describe("formatTitle", () => {
   test("strips strong tags and applies bold", () => {
@@ -44,5 +44,19 @@ describe("monthLabel", () => {
 
   test("formats december", () => {
     expect(monthLabel(12, 2025)).toBe("December 2025");
+  });
+});
+
+describe("formatAmount", () => {
+  test("primary only", () => {
+    expect(formatAmount("150 JPY", "")).toBe("150 JPY");
+  });
+
+  test("primary and secondary", () => {
+    expect(formatAmount("500 GBP", "650 EUR")).toBe("500 GBP → 650 EUR");
+  });
+
+  test("primary with undefined secondary", () => {
+    expect(formatAmount("100 USD", undefined)).toBe("100 USD");
   });
 });

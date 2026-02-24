@@ -1,4 +1,4 @@
-import { wiseGet, wisePost, requireSession, setVerbose } from "../client.js";
+import { wiseGet, wisePost, wiseGatewayGet, requireSession, setVerbose } from "../client.js";
 import { setScaVerbose } from "../sca.js";
 import { prompt } from "../auth.js";
 import { validateCurrency, validateBalanceId } from "../validate.js";
@@ -34,22 +34,22 @@ export async function sendCommand(
       process.exit(1);
     }
 
-    // Step 1: Resolve recipient
-    let targetAccount: number;
+    // Step 1: Resolve recipient or contact
+    let targetAccount: number | undefined;
+    let contactId: string | undefined;
     let recipientCurrency: string | undefined;
+
     if (opts.to) {
       targetAccount = parseInt(opts.to, 10);
       if (isNaN(targetAccount) || targetAccount <= 0) {
         console.error(`Invalid recipient ID: "${opts.to}". Expected a positive number.`);
         process.exit(1);
       }
-      // Fetch recipient to get their currency
       const recipient = await wiseGet(`/v2/accounts/${targetAccount}`);
       recipientCurrency = recipient?.currency;
     } else {
-      const picked = await pickRecipient(profileId);
-      targetAccount = picked.id;
-      recipientCurrency = picked.currency;
+      const picked = await pickContact(profileId);
+      contactId = picked.contactId;
     }
 
     // Step 2: Determine target currency
@@ -58,14 +58,30 @@ export async function sendCommand(
       : recipientCurrency || sourceCurrency;
 
     // Step 3: Create quote
-    console.log(`Creating quote: ${sourceAmount} ${sourceCurrency} -> ${targetCurrency}...`);
-    const quote = await wisePost(`/v3/profiles/${profileId}/quotes`, {
+    const quoteBody: Record<string, any> = {
       sourceCurrency,
-      targetCurrency,
       sourceAmount,
-      targetAccount,
       payOut: "BALANCE",
-    });
+    };
+    if (contactId) {
+      // Contact-based: API resolves targetAccount from contactId
+      quoteBody.contactId = contactId;
+      quoteBody.targetCurrency = targetCurrency;
+      console.log(`Creating quote: ${sourceAmount} ${sourceCurrency} -> ${targetCurrency}...`);
+    } else {
+      quoteBody.targetAccount = targetAccount;
+      quoteBody.targetCurrency = targetCurrency;
+      console.log(`Creating quote: ${sourceAmount} ${sourceCurrency} -> ${targetCurrency}...`);
+    }
+    const quote = await wisePost(`/v3/profiles/${profileId}/quotes`, quoteBody);
+
+    // For contact-based sends, extract the resolved targetAccount from the quote
+    if (!targetAccount) {
+      targetAccount = quote.targetAccount;
+      if (!targetAccount) {
+        throw new Error("Quote did not resolve a target account from the contact.");
+      }
+    }
 
     const balanceOption = quote.paymentOptions?.find(
       (o: any) => o.payIn === "BALANCE" && !o.disabled
@@ -74,7 +90,7 @@ export async function sendCommand(
     // Step 4: Check transfer requirements
     const customerTransactionId = crypto.randomUUID();
     const details = await collectTransferRequirements(
-      targetAccount,
+      targetAccount!,
       quote.id,
       customerTransactionId,
       opts.reference
@@ -119,18 +135,21 @@ export async function sendCommand(
       { type: "BALANCE" }
     );
 
-    // Step 8: Print summary
+    // Step 8: Re-fetch transfer for accurate post-funding state
+    const funded = await wiseGet(`/v1/transfers/${transfer.id}`);
+
+    // Step 9: Print summary
     console.log("\nTransfer created and funded.\n");
+    const fee = balanceOption?.fee?.total;
     printSummary([
+      ["Transfer ID", String(funded.id)],
+      ["Status", funded.status],
+      ["Source", `${funded.sourceValue} ${funded.sourceCurrency}`],
+      ["Target", `${funded.targetValue} ${funded.targetCurrency}`],
+      ["Rate", String(funded.rate)],
+      ...(fee != null ? [["Fee", `${fee} ${sourceCurrency}`] as [string, string]] : []),
+      ["Payment", `${payment.status} (${payment.type})`],
       ["Quote ID", quote.id],
-      ["Rate", String(quote.rate)],
-      ["Source", `${transfer.sourceValue} ${transfer.sourceCurrency}`],
-      ["Target", `${transfer.targetValue} ${transfer.targetCurrency}`],
-      ...(balanceOption ? [["Fee", `${balanceOption.fee.total} ${sourceCurrency}`] as [string, string]] : []),
-      ["Transfer ID", String(transfer.id)],
-      ["Transfer Status", transfer.status],
-      ["Payment Status", payment.status],
-      ["Payment Type", payment.type],
     ]);
 
     if (payment.status === "REJECTED") {
@@ -144,90 +163,110 @@ export async function sendCommand(
   }
 }
 
-/**
- * Fetch all recipients, paginating through the v2 API.
- */
-async function fetchAllRecipients(profileId: number): Promise<any[]> {
-  const all: any[] = [];
-  let seekPosition: string | null = null;
-
-  do {
-    let url = `/v2/accounts?profileId=${profileId}&size=50`;
-    if (seekPosition) url += `&seekPosition=${seekPosition}`;
-    const response = await wiseGet(url);
-    const page = response?.content;
-    if (!page || page.length === 0) break;
-    all.push(...page);
-    seekPosition = response.seekPositionForNext ?? null;
-  } while (seekPosition);
-
-  return all;
+interface Contact {
+  id: string;
+  name: string;
+  subtitle: string;
 }
 
 /**
- * Format a recipient for display: "Name — GBP xxx-8842 (UK sort code)"
+ * Fetch contacts from the gateway API, paginating through all pages.
  */
-function formatRecipient(r: any): string {
-  const name = r.name?.fullName || "Unknown";
-  const curr = r.currency || "???";
+interface ContactListResult {
+  recent: Contact[];
+  all: Contact[];
+}
 
-  // Extract last 4 digits from accountSummary or displayFields
-  const accountNum = r.displayFields?.find((f: any) =>
-    f.key?.includes("accountNumber") || f.key?.includes("iban") || f.key?.includes("clabe")
-  )?.value;
-  const last4 = accountNum?.replace(/\D/g, "")?.slice(-4);
-  const masked = last4 ? `xxx-${last4}` : "";
+async function fetchContacts(profileId: number): Promise<ContactListResult> {
+  const response = await wiseGatewayGet(
+    `/v2/profiles/${profileId}/contact-list-page?action=SEND&payInMethod=DEFAULT&recentContactsPageSize=10&contactsPageSize=50&includeExternalIdentifiers=true&enriched=true`
+  );
 
-  // Bank/account type label from first displayField (e.g. "UK sort code")
-  const bankLabel = r.displayFields?.[0]?.label || r.type || "";
+  const parseContacts = (list: any[]): Contact[] =>
+    (list || []).map((c: any) => ({
+      id: c.id,
+      name: c.name || c.display?.title || "Unknown",
+      subtitle: c.display?.subtitle || "",
+    }));
 
-  const parts = [name, "—", [curr, masked].filter(Boolean).join(" ")];
-  if (bankLabel) parts.push(`(${bankLabel})`);
-  return parts.join(" ");
+  return {
+    recent: parseContacts(response?.recent?.contacts),
+    all: parseContacts(response?.contacts?.contacts),
+  };
 }
 
 /**
- * Fetch saved recipients and let the user pick one.
+ * Short name: "John S." from "John Smith"
+ */
+function shortName(full: string): string {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length <= 1) return full;
+  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+}
+
+/**
+ * Print contacts as an aligned table.
+ */
+function printContactTable(contacts: Contact[]): void {
+  const rows = contacts.map((c, i) => ({
+    num: String(i + 1),
+    name: shortName(c.name),
+    subtitle: c.subtitle,
+  }));
+
+  const w = {
+    num: Math.max(1, ...rows.map(r => r.num.length)),
+    name: Math.max(4, ...rows.map(r => r.name.length)),
+  };
+
+  console.log(`  ${"#".padEnd(w.num)}  ${"Name".padEnd(w.name)}  Info`);
+  console.log(`  ${"─".repeat(w.num + w.name + 30)}`);
+
+  for (const r of rows) {
+    console.log(`  ${r.num.padStart(w.num)}  ${r.name.padEnd(w.name)}  ${r.subtitle}`);
+  }
+}
+
+/**
+ * Fetch contacts and let the user pick one.
  * Supports search: type text to filter, number to select.
  */
-async function pickRecipient(profileId: number): Promise<{ id: number; currency: string }> {
-  const allRecipients = await fetchAllRecipients(profileId);
+async function pickContact(profileId: number): Promise<{ contactId: string }> {
+  const { recent, all } = await fetchContacts(profileId);
 
-  if (allRecipients.length === 0) {
-    console.error("No saved recipients found. Create one at wise.com first, or use --to <id>.");
+  if (recent.length === 0 && all.length === 0) {
+    console.error("No contacts found. Add contacts at wise.com first, or use --to <recipientId>.");
     process.exit(1);
   }
 
-  let filtered = allRecipients;
+  let displayed = recent.length > 0 ? recent : all;
+  let isSearchResult = false;
 
   while (true) {
-    console.log(`\nRecipients (${filtered.length}):\n`);
-    for (let i = 0; i < filtered.length; i++) {
-      console.log(`  ${i + 1}. ${formatRecipient(filtered[i])}`);
-    }
+    const label = isSearchResult ? "Results" : "Recent";
+    console.log(`\n${label} (${displayed.length}):\n`);
+    printContactTable(displayed);
 
-    const input = (await prompt(`\nSelect [1-${filtered.length}] or search by name/currency: `)).trim();
+    const input = (await prompt(`\nSelect [1-${displayed.length}] or search: `)).trim();
 
-    // Number = selection
     const num = parseInt(input, 10);
-    if (!isNaN(num) && num >= 1 && num <= filtered.length) {
-      const r = filtered[num - 1];
-      return { id: r.id, currency: r.currency };
+    if (!isNaN(num) && num >= 1 && num <= displayed.length) {
+      return { contactId: displayed[num - 1].id };
     }
 
-    // Text = filter
     if (input.length > 0) {
       const q = input.toLowerCase();
-      filtered = allRecipients.filter((r: any) => {
-        const name = (r.name?.fullName || "").toLowerCase();
-        const curr = (r.currency || "").toLowerCase();
-        const summary = (r.accountSummary || "").toLowerCase();
-        return name.includes(q) || curr.includes(q) || summary.includes(q);
-      });
+      const matches = all.filter(c =>
+        c.name.toLowerCase().includes(q) || c.subtitle.toLowerCase().includes(q)
+      );
 
-      if (filtered.length === 0) {
-        console.log(`No recipients matching "${input}".`);
-        filtered = allRecipients;
+      if (matches.length === 0) {
+        console.log(`No contacts matching "${input}".`);
+        displayed = recent.length > 0 ? recent : all;
+        isSearchResult = false;
+      } else {
+        displayed = matches;
+        isSearchResult = true;
       }
     }
   }

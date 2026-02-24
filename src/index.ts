@@ -6,7 +6,10 @@ import { profilesCommand } from "./commands/profiles.js";
 import { balancesCommand } from "./commands/balances.js";
 import { ratesCommand } from "./commands/rates.js";
 import { statementsCommand } from "./commands/statements.js";
+import { transferCommand } from "./commands/transfer.js";
 import { transfersCommand } from "./commands/transfers.js";
+import { contactsCommand } from "./commands/contacts.js";
+import { recipientsCommand } from "./commands/recipients.js";
 import { moveCommand } from "./commands/move.js";
 import { sendCommand } from "./commands/send.js";
 import { whoamiCommand } from "./commands/whoami.js";
@@ -54,11 +57,27 @@ program
   .requiredOption("--to <date>", "End date (YYYY-MM-DD)")
   .action(statementsCommand);
 
+// People
+program
+  .command("contacts")
+  .description("Browse and search Wise contacts")
+  .action(contactsCommand);
+
+program
+  .command("recipients")
+  .description("Browse and search saved bank recipients")
+  .action(recipientsCommand);
+
 // Money movement
 program
   .command("rates <source> <target>")
   .description("Get live exchange rate (e.g. wise rates EUR GBP)")
   .action(ratesCommand);
+
+program
+  .command("transfer <id>")
+  .description("Get transfer details by ID")
+  .action(transferCommand);
 
 program
   .command("transfers")

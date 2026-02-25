@@ -13,6 +13,7 @@ import { recipientsCommand } from "./commands/recipients.js";
 import { moveCommand } from "./commands/move.js";
 import { sendCommand } from "./commands/send.js";
 import { whoamiCommand } from "./commands/whoami.js";
+import { activitiesCommand } from "./commands/activities.js";
 
 const program = new Command();
 
@@ -48,6 +49,15 @@ program
   .command("balances")
   .description("Show all balances (standard + savings)")
   .action(balancesCommand);
+
+program
+  .command("activities")
+  .description("Browse account activities")
+  .option("--month [MM-YYYY]", "Month view (current month if no value)")
+  .option("--status <status>", "Filter by status (COMPLETED, IN_PROGRESS, etc.)")
+  .option("--type <type>", "Filter by activity type (TRANSFER, CARD_PAYMENT, etc.)")
+  .option("--size <n>", "Page size (default 10, max 100)")
+  .action(activitiesCommand);
 
 program
   .command("statements")

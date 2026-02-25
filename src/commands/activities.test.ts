@@ -22,6 +22,11 @@ describe("formatTitle", () => {
     expect(result).toBe("\x1b[1mSent\x1b[0m to \x1b[32mJohn\x1b[0m");
   });
 
+  test("strips positive tags and applies green", () => {
+    const result = formatTitle("<positive>+100 GBP</positive>", true);
+    expect(result).toBe("\x1b[32m+100 GBP\x1b[0m");
+  });
+
   test("strips all tags when isTTY is false", () => {
     const result = formatTitle("<strong>Test Payment</strong>", false);
     expect(result).toBe("Test Payment");

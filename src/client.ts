@@ -80,7 +80,9 @@ export async function wiseGet(path: string): Promise<any> {
     throw await apiError(res);
   }
 
-  return res.json();
+  const json = await res.json();
+  if (verbose) console.error(`<- body: ${JSON.stringify(json).slice(0, 1000)}`);
+  return json;
 }
 
 /**

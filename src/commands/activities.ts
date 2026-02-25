@@ -164,7 +164,9 @@ export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
       const result = await fetchActivities(fetchOpts);
 
       if (isMonthMode) {
-        console.log(`\n${monthLabel(currentMonth, currentYear)} — ${result.activities.length} activities\n`);
+        console.log(`\nActivities (${result.activities.length}) — ${monthLabel(currentMonth, currentYear)}\n`);
+      } else {
+        console.log(`\nActivities (${result.activities.length})\n`);
       }
 
       printActivities(result.activities, isTTY);

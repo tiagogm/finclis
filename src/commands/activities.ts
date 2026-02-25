@@ -111,31 +111,31 @@ export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
     if (opts.verbose) setVerbose(true);
     const profileId = getProfileId();
     const isTTY = process.stdout.isTTY ?? false;
-    const size = opts.size ? parseInt(opts.size, 10) : 10;
+    const size = opts.size ? Number(opts.size) : 10;
 
-    if (opts.size && (isNaN(size) || size < 1 || size > 100)) {
-      console.error("Size must be between 1 and 100.");
+    if (opts.size && (isNaN(size) || !Number.isInteger(size) || size < 1 || size > 100)) {
+      console.error("Size must be a whole number between 1 and 100.");
       process.exit(1);
     }
 
     const status = opts.status?.toUpperCase();
+    const now = new Date();
+    const nowMonth = now.getMonth() + 1;
+    const nowYear = now.getFullYear();
     const isMonthMode = opts.month !== undefined;
     let currentMonth: number;
     let currentYear: number;
 
     if (isMonthMode) {
-      const now = new Date();
       if (opts.month === true) {
-        currentMonth = now.getMonth() + 1;
-        currentYear = now.getFullYear();
+        currentMonth = nowMonth;
+        currentYear = nowYear;
       } else {
         const parsed = parseMonth(opts.month as string);
         if (!parsed) {
           console.error(`Invalid month: "${opts.month}". Expected MM-YYYY (e.g. 02-2026).`);
           process.exit(1);
         }
-        const nowYear = now.getFullYear();
-        const nowMonth = now.getMonth() + 1;
         if (parsed.year > nowYear || (parsed.year === nowYear && parsed.month > nowMonth)) {
           console.error(`Invalid month: "${opts.month}" is in the future.`);
           process.exit(1);
@@ -183,7 +183,25 @@ export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
         break;
       }
 
-      const input = (await prompt(`\n${nav.join("  ")}  `)).trim().toLowerCase();
+      // Compute whether forward month would still be in the past/present
+      const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+      const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;
+      const canGoForward = isMonthMode &&
+        (nextYear < nowYear || (nextYear === nowYear && nextMonth <= nowMonth));
+
+      const visibleNav = nav.filter(n => n !== "[f]orward month" || canGoForward);
+
+      let input: string;
+      while (true) {
+        input = (await prompt(`\n${visibleNav.join("  ")}  `)).trim().toLowerCase();
+        if (
+          (input === "n" && result.cursor) ||
+          (input === "p" && isMonthMode) ||
+          (input === "f" && canGoForward) ||
+          input === "q" ||
+          input === ""
+        ) break;
+      }
 
       if (input === "n" && result.cursor) {
         cursor = result.cursor;
@@ -194,12 +212,9 @@ export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
           currentYear--;
         }
         cursor = undefined;
-      } else if (input === "f" && isMonthMode) {
-        currentMonth++;
-        if (currentMonth > 12) {
-          currentMonth = 1;
-          currentYear++;
-        }
+      } else if (input === "f" && canGoForward) {
+        currentMonth = nextMonth;
+        currentYear = nextYear;
         cursor = undefined;
       } else if (input === "q" || input === "") {
         break;

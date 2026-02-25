@@ -118,19 +118,26 @@ export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
       process.exit(1);
     }
 
+    const status = opts.status?.toUpperCase();
     const isMonthMode = opts.month !== undefined;
     let currentMonth: number;
     let currentYear: number;
 
     if (isMonthMode) {
+      const now = new Date();
       if (opts.month === true) {
-        const now = new Date();
         currentMonth = now.getMonth() + 1;
         currentYear = now.getFullYear();
       } else {
         const parsed = parseMonth(opts.month as string);
         if (!parsed) {
           console.error(`Invalid month: "${opts.month}". Expected MM-YYYY (e.g. 02-2026).`);
+          process.exit(1);
+        }
+        const nowYear = now.getFullYear();
+        const nowMonth = now.getMonth() + 1;
+        if (parsed.year > nowYear || (parsed.year === nowYear && parsed.month > nowMonth)) {
+          console.error(`Invalid month: "${opts.month}" is in the future.`);
           process.exit(1);
         }
         currentMonth = parsed.month;
@@ -144,7 +151,7 @@ export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
     let cursor: string | undefined;
 
     while (true) {
-      const fetchOpts: FetchOpts = { profileId, size, status: opts.status, type: opts.type };
+      const fetchOpts: FetchOpts = { profileId, size, status, type: opts.type };
 
       if (isMonthMode) {
         const bounds = monthBounds(currentMonth, currentYear);

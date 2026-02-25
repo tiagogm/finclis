@@ -81,7 +81,14 @@ export async function wiseGet(path: string): Promise<any> {
   }
 
   const json = await res.json();
-  if (verbose) console.error(`<- body: ${JSON.stringify(json).slice(0, 1000)}`);
+  if (verbose) {
+    const interesting = ["x-next-cursor", "link", "x-total-count", "x-pagination-next"];
+    for (const h of interesting) {
+      const v = res.headers.get(h);
+      if (v) console.error(`<- ${h}: ${v}`);
+    }
+    console.error(`<- body: ${JSON.stringify(json).slice(0, 2000)}`);
+  }
   return json;
 }
 

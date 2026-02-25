@@ -1,10 +1,11 @@
-import { wiseGet, getProfileId } from "../client.js";
+import { wiseGet, getProfileId, setVerbose } from "../client.js";
 import { prompt } from "../auth.js";
 import { parseMonth, monthBounds } from "../validate.js";
 
 const ANSI: Record<string, string> = {
   strong: "\x1b[1m",
   green: "\x1b[32m",
+  positive: "\x1b[32m",
   red: "\x1b[31m",
 };
 const RESET = "\x1b[0m";
@@ -16,11 +17,11 @@ const MONTHS = [
 
 export function formatTitle(title: string, isTTY: boolean): string {
   if (isTTY) {
-    return title.replace(/<(strong|green|red)>(.*?)<\/\1>/g, (_match, tag, content) => {
+    return title.replace(/<(strong|green|positive|red)>(.*?)<\/\1>/g, (_match, tag, content) => {
       return `${ANSI[tag]}${content}${RESET}`;
     });
   }
-  return title.replace(/<\/?(strong|green|red)>/g, "");
+  return title.replace(/<\/?(strong|green|positive|red)>/g, "");
 }
 
 export function monthLabel(month: number, year: number): string {
@@ -39,7 +40,7 @@ function printActivities(activities: any[], isTTY: boolean): void {
   }
 
   const rows = activities.map((a: any) => ({
-    date: a.createdOn?.slice(0, 10) || "",
+    date: (a.createdOn || a.visibleOn)?.slice(0, 10) || "",
     status: a.status || "",
     type: a.type || "",
     title: formatTitle(a.title || "", isTTY),
@@ -92,10 +93,9 @@ async function fetchActivities(opts: FetchOpts): Promise<{ activities: any[]; cu
   if (opts.cursor) params.append("nextCursor", opts.cursor);
 
   const data = await wiseGet(`/v1/profiles/${opts.profileId}/activities?${params}`);
-  return {
-    activities: data.activities || [],
-    cursor: data.cursor || null,
-  };
+  const activities = Array.isArray(data) ? data : (data.activities || []);
+  const cursor = Array.isArray(data) ? null : (data.cursor || null);
+  return { activities, cursor };
 }
 
 interface ActivitiesOpts {
@@ -103,10 +103,12 @@ interface ActivitiesOpts {
   status?: string;
   type?: string;
   size?: string;
+  verbose?: boolean;
 }
 
 export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
   try {
+    if (opts.verbose) setVerbose(true);
     const profileId = getProfileId();
     const isTTY = process.stdout.isTTY ?? false;
     const size = opts.size ? parseInt(opts.size, 10) : 10;
@@ -155,7 +157,7 @@ export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
       const result = await fetchActivities(fetchOpts);
 
       if (isMonthMode) {
-        console.log(`\n${monthLabel(currentMonth, currentYear)}\n`);
+        console.log(`\n${monthLabel(currentMonth, currentYear)} — ${result.activities.length} activities\n`);
       }
 
       printActivities(result.activities, isTTY);

@@ -44,7 +44,7 @@ function printActivities(activities: any[], isTTY: boolean): void {
     status: a.status || "",
     type: a.type || "",
     title: formatTitle(a.title || "", isTTY),
-    amount: formatAmount(a.primaryAmount, a.secondaryAmount),
+    amount: formatTitle(formatAmount(a.primaryAmount, a.secondaryAmount), isTTY),
   }));
 
   const w = {
@@ -52,7 +52,7 @@ function printActivities(activities: any[], isTTY: boolean): void {
     status: Math.max(6, ...rows.map(r => r.status.length)),
     type: Math.max(4, ...rows.map(r => r.type.length)),
     title: Math.max(5, ...rows.map(r => stripAnsi(r.title).length)),
-    amount: Math.max(6, ...rows.map(r => r.amount.length)),
+    amount: Math.max(6, ...rows.map(r => stripAnsi(r.amount).length)),
   };
 
   console.log(

@@ -1,0 +1,28 @@
+name: Release wise-cli
+
+on:
+  push:
+    tags:
+      - "wise-cli/v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install
+      - name: Compile binaries
+        working-directory: packages/wise
+        run: bun run compile
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packages/wise/dist/wise-linux-x64
+            packages/wise/dist/wise-darwin-arm64
+            packages/wise/dist/wise-windows-x64.exe

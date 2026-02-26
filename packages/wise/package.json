@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "description": "Unofficial CLI for Wise (TransferWise) with browser-based 2FA authentication",
   "author": "Tiago Morais",
-  "private": false,
+  "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "bun": ">=1.0.0"
   },
   "bin": {
     "wise": "./wise"

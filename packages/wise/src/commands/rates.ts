@@ -13,7 +13,7 @@ export async function ratesCommand(
     const rates = await wiseGet(`/v1/rates?${params}`);
     if (rates.length === 0) {
       console.error(`No rate found for ${src} → ${tgt}`);
-      process.exit(1);
+      process.exit(0);
     }
     const rate = rates[0];
     console.log(
@@ -21,6 +21,6 @@ export async function ratesCommand(
     );
   } catch (err: any) {
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }

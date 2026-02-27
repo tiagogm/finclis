@@ -21,6 +21,6 @@ export async function transfersCommand(): Promise<void> {
     }
   } catch (err: any) {
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }

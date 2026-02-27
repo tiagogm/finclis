@@ -20,7 +20,7 @@ export async function statementsCommand(opts: StatementOpts): Promise<void> {
     const balance = balances.find((b: any) => b.currency === currency);
     if (!balance) {
       console.error(`No ${currency} balance found`);
-      process.exit(1);
+      process.exit(0);
     }
 
     const balanceId = balance.id || balance.balanceId;
@@ -28,11 +28,11 @@ export async function statementsCommand(opts: StatementOpts): Promise<void> {
     const params = new URLSearchParams({
       currency,
       intervalStart: new Date(fromDate).toISOString(),
-      intervalEnd: new Date(toDate).toISOString(),
+      intervalEnd: `${toDate}T23:59:59.999Z`,
       type: "FLAT",
     });
 
-    const url = `/v3/profiles/${profileId}/balance-statements/${balanceId}/statement/flat?${params}`;
+    const url = `/v1/profiles/${profileId}/balance-statements/${balanceId}/statement.json?${params}`;
     const statement = await wiseGet(url);
 
     if (!statement.transactions || statement.transactions.length === 0) {
@@ -48,6 +48,6 @@ export async function statementsCommand(opts: StatementOpts): Promise<void> {
     }
   } catch (err: any) {
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }

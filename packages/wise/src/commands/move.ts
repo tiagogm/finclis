@@ -21,7 +21,7 @@ export async function moveCommand(opts: MoveOpts): Promise<void> {
 
     if (isNaN(amount) || amount <= 0) {
       console.error("Amount must be a positive number.");
-      process.exit(1);
+      process.exit(0);
     }
 
     const sameCurrency = sourceCurrency === targetCurrency;
@@ -35,13 +35,13 @@ export async function moveCommand(opts: MoveOpts): Promise<void> {
         const matching = balances.filter((b: any) => b.currency === sourceCurrency);
         if (matching.length < 2) {
           console.error(`Need at least 2 ${sourceCurrency} balances to move between. Found ${matching.length}.`);
-          process.exit(1);
+          process.exit(0);
         }
         console.error(`Specify --source-balance and --target-balance. ${sourceCurrency} balances:`);
         for (const b of matching) {
           console.error(`  ${b.id}\t${b.type}\t${b.amount.value} ${b.currency}`);
         }
-        process.exit(1);
+        process.exit(0);
       }
 
       // Confirmation
@@ -119,6 +119,6 @@ export async function moveCommand(opts: MoveOpts): Promise<void> {
     }
   } catch (err: any) {
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }

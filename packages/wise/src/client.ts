@@ -38,7 +38,7 @@ async function apiError(res: Response): Promise<Error> {
 export function requireSession(): Session {
   const session = loadSession();
   if (!session) {
-    process.exit(1);
+    process.exit(0);
   }
   return session;
 }

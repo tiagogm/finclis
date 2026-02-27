@@ -5,3 +5,5 @@ src/**/*.d.ts
 session.json
 bun.lock
 docs/plans/*
+.DS_Store
+*.bun-build

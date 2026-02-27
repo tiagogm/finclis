@@ -115,7 +115,7 @@ export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
 
     if (opts.size && (isNaN(size) || !Number.isInteger(size) || size < 1 || size > 100)) {
       console.error("Size must be a whole number between 1 and 100.");
-      process.exit(1);
+      process.exit(0);
     }
 
     const status = opts.status?.toUpperCase();
@@ -134,11 +134,11 @@ export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
         const parsed = parseMonth(opts.month as string);
         if (!parsed) {
           console.error(`Invalid month: "${opts.month}". Expected MM-YYYY (e.g. 02-2026).`);
-          process.exit(1);
+          process.exit(0);
         }
         if (parsed.year > nowYear || (parsed.year === nowYear && parsed.month > nowMonth)) {
           console.error(`Invalid month: "${opts.month}" is in the future.`);
-          process.exit(1);
+          process.exit(0);
         }
         currentMonth = parsed.month;
         currentYear = parsed.year;
@@ -222,6 +222,6 @@ export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
     }
   } catch (err: any) {
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }

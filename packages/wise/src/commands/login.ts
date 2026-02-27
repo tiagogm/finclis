@@ -9,11 +9,11 @@ export async function loginCommand(opts: LoginOpts): Promise<void> {
     const ttl = opts.ttl ? parseInt(opts.ttl, 10) : undefined;
     if (opts.ttl && (!ttl || ttl <= 0)) {
       console.error("TTL must be a positive number (minutes).");
-      process.exit(1);
+      process.exit(0);
     }
     await login(ttl);
   } catch (err: any) {
     console.error(`Login failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }

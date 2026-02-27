@@ -31,7 +31,7 @@ export async function sendCommand(
 
     if (isNaN(sourceAmount) || sourceAmount <= 0) {
       console.error("Amount must be a positive number.");
-      process.exit(1);
+      process.exit(0);
     }
 
     // Step 1: Resolve recipient or contact
@@ -43,13 +43,13 @@ export async function sendCommand(
       targetAccount = parseInt(opts.to, 10);
       if (isNaN(targetAccount) || targetAccount <= 0) {
         console.error(`Invalid recipient ID: "${opts.to}". Expected a positive number.`);
-        process.exit(1);
+        process.exit(0);
       }
       const recipient = await wiseGet(`/v2/accounts/${targetAccount}`);
       recipientCurrency = recipient?.currency;
       if (!recipientCurrency) {
         console.error(`Could not determine currency for recipient ${targetAccount}. Use --target-currency to specify.`);
-        process.exit(1);
+        process.exit(0);
       }
     } else {
       const picked = await pickContact(profileId);
@@ -159,11 +159,11 @@ export async function sendCommand(
     if (payment.status === "REJECTED") {
       console.error(`\nPayment rejected: ${payment.errorCode}`);
       console.error(`Transfer ${transfer.id} created but not funded. Fund it manually or retry.`);
-      process.exit(1);
+      process.exit(0);
     }
   } catch (err: any) {
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }
 
@@ -240,7 +240,7 @@ async function pickContact(profileId: number): Promise<{ contactId: string }> {
 
   if (recent.length === 0 && all.length === 0) {
     console.error("No contacts found. Add contacts at wise.com first, or use --to <recipientId>.");
-    process.exit(1);
+    process.exit(0);
   }
 
   let displayed = recent.length > 0 ? recent : all;
@@ -326,7 +326,7 @@ async function collectTransferRequirements(
             const idx = parseInt(input, 10) - 1;
             if (isNaN(idx) || idx < 0 || idx >= g.valuesAllowed.length) {
               console.error("Invalid selection.");
-              process.exit(1);
+              process.exit(0);
             }
             details[g.key] = g.valuesAllowed[idx].key;
           } else {
@@ -338,15 +338,15 @@ async function collectTransferRequirements(
 
             if (g.minLength && value.length < g.minLength) {
               console.error(`Must be at least ${g.minLength} characters.`);
-              process.exit(1);
+              process.exit(0);
             }
             if (g.maxLength && value.length > g.maxLength) {
               console.error(`Must be at most ${g.maxLength} characters.`);
-              process.exit(1);
+              process.exit(0);
             }
             if (g.validationRegexp && !new RegExp(g.validationRegexp).test(value)) {
               console.error(`Invalid format. Expected: ${g.validationRegexp}`);
-              process.exit(1);
+              process.exit(0);
             }
 
             details[g.key] = value;

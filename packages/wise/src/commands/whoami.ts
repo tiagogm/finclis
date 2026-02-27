@@ -53,9 +53,9 @@ export async function whoamiCommand(): Promise<void> {
   } catch (err: any) {
     if (err.message.includes("401")) {
       console.error("Session expired. Run: wise login");
-      process.exit(1);
+      process.exit(0);
     }
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }

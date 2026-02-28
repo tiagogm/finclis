@@ -1,7 +1,9 @@
 import { wiseGet, getProfileId } from "../client.js";
 import { validateCurrency, validateDate } from "../validate.js";
+import { writeJson, handleJsonError } from "../json.js";
+import type { BaseCommandOpts } from "../json.js";
 
-interface StatementOpts {
+interface StatementOpts extends BaseCommandOpts {
   currency: string;
   from: string;
   to: string;
@@ -35,6 +37,11 @@ export async function statementsCommand(opts: StatementOpts): Promise<void> {
     const url = `/v1/profiles/${profileId}/balance-statements/${balanceId}/statement.json?${params}`;
     const statement = await wiseGet(url);
 
+    if (opts.json) {
+      writeJson(statement);
+      return;
+    }
+
     if (!statement.transactions || statement.transactions.length === 0) {
       console.log("No transactions found.");
       return;
@@ -47,6 +54,7 @@ export async function statementsCommand(opts: StatementOpts): Promise<void> {
       console.log(`${date}\t${amount}\t${tx.amount.currency}\t${desc}`);
     }
   } catch (err: any) {
+    if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(0);
   }

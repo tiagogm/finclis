@@ -1,11 +1,18 @@
 import { wiseGet, getProfileId } from "../client.js";
+import { writeJson, handleJsonError } from "../json.js";
+import type { BaseCommandOpts } from "../json.js";
 
-export async function transfersCommand(): Promise<void> {
+export async function transfersCommand(opts: BaseCommandOpts = {}): Promise<void> {
   try {
     const profileId = getProfileId();
     const transfers = await wiseGet(
       `/v1/transfers?profile=${profileId}&limit=20&offset=0`
     );
+
+    if (opts.json) {
+      writeJson(transfers);
+      return;
+    }
 
     if (!Array.isArray(transfers) || transfers.length === 0) {
       console.log("No transfers found.");
@@ -20,6 +27,7 @@ export async function transfersCommand(): Promise<void> {
       console.log(`[${t.id}]\t${created}\t${source} → ${target}\t${status}`);
     }
   } catch (err: any) {
+    if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(0);
   }

@@ -49,6 +49,7 @@ program
   .command("whoami")
   .description("Check session and show account info")
   .option("-v, --verbose", "Log HTTP requests")
+  .option("--json", "Output raw JSON")
   .action(whoamiCommand);
 
 // Account
@@ -56,12 +57,14 @@ program
   .command("profiles")
   .description("List your personal and business profiles")
   .option("-v, --verbose", "Log HTTP requests")
+  .option("--json", "Output raw JSON")
   .action(profilesCommand);
 
 program
   .command("balances")
   .description("Show all balances (standard + savings)")
   .option("-v, --verbose", "Log HTTP requests")
+  .option("--json", "Output raw JSON")
   .action(balancesCommand);
 
 program
@@ -71,6 +74,9 @@ program
   .option("--status <status>", "Filter by status (COMPLETED, IN_PROGRESS, etc.)")
   .option("--type <type>", "Filter by activity type (TRANSFER, CARD_PAYMENT, etc.)")
   .option("--size <n>", "Page size (default 10, max 100)")
+  .option("--from <date>", "Start date YYYY-MM-DD (with --json)")
+  .option("--to <date>", "End date YYYY-MM-DD (with --json)")
+  .option("--json", "Output raw JSON (auto-paginates all results)")
   .option("-v, --verbose", "Log HTTP requests")
   .action(activitiesCommand);
 
@@ -81,6 +87,7 @@ program
   .requiredOption("--from <date>", "Start date (YYYY-MM-DD)")
   .requiredOption("--to <date>", "End date (YYYY-MM-DD)")
   .option("-v, --verbose", "Log HTTP requests")
+  .option("--json", "Output raw JSON")
   .action(statementsCommand);
 
 // People
@@ -101,18 +108,21 @@ program
   .command("rates <source> <target>")
   .description("Get live exchange rate (e.g. wise rates EUR GBP)")
   .option("-v, --verbose", "Log HTTP requests")
+  .option("--json", "Output raw JSON")
   .action(ratesCommand);
 
 program
   .command("transfer <id>")
   .description("Get transfer details by ID")
   .option("-v, --verbose", "Log HTTP requests")
+  .option("--json", "Output raw JSON")
   .action(transferCommand);
 
 program
   .command("transfers")
   .description("List recent transfers")
   .option("-v, --verbose", "Log HTTP requests")
+  .option("--json", "Output raw JSON")
   .action(transfersCommand);
 
 program

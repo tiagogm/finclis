@@ -1,6 +1,8 @@
 import { wiseGet, getProfileId, setVerbose } from "../client.js";
 import { prompt } from "../auth.js";
 import { parseMonth, monthBounds } from "../validate.js";
+import { writeJson, handleJsonError } from "../json.js";
+import type { BaseCommandOpts } from "../json.js";
 
 const ANSI: Record<string, string> = {
   strong: "\x1b[1m",
@@ -98,18 +100,63 @@ async function fetchActivities(opts: FetchOpts): Promise<{ activities: any[]; cu
   return { activities, cursor };
 }
 
-interface ActivitiesOpts {
+const MAX_PAGES = 100;
+
+interface ActivitiesOpts extends BaseCommandOpts {
   month?: string | true;
   status?: string;
   type?: string;
   size?: string;
-  verbose?: boolean;
+  from?: string;
+  to?: string;
 }
 
 export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
   try {
     if (opts.verbose) setVerbose(true);
     const profileId = getProfileId();
+
+    if (opts.json) {
+      let since: string | undefined;
+      let until: string | undefined;
+
+      if (opts.from || opts.to) {
+        since = opts.from ? new Date(opts.from).toISOString() : undefined;
+        until = opts.to ? new Date(opts.to + "T23:59:59.999Z").toISOString() : undefined;
+      } else if (opts.month) {
+        const now = new Date();
+        const { month, year } = opts.month === true
+          ? { month: now.getMonth() + 1, year: now.getFullYear() }
+          : parseMonth(opts.month as string) ?? { month: now.getMonth() + 1, year: now.getFullYear() };
+        const bounds = monthBounds(month, year);
+        since = bounds.since;
+        until = bounds.until;
+      }
+
+      const status = opts.status?.toUpperCase() || "COMPLETED";
+      const allActivities: any[] = [];
+      let cursor: string | undefined;
+      let pages = 0;
+
+      do {
+        const result = await fetchActivities({
+          profileId,
+          size: 100,
+          since,
+          until,
+          status,
+          type: opts.type,
+          cursor,
+        });
+        allActivities.push(...result.activities);
+        cursor = result.cursor ?? undefined;
+        pages++;
+      } while (cursor && pages < MAX_PAGES);
+
+      writeJson(allActivities);
+      return;
+    }
+
     const isTTY = process.stdout.isTTY ?? false;
     const size = opts.size ? Number(opts.size) : 10;
 
@@ -221,6 +268,7 @@ export async function activitiesCommand(opts: ActivitiesOpts): Promise<void> {
       }
     }
   } catch (err: any) {
+    if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(0);
   }

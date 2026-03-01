@@ -1,4 +1,8 @@
 import { test, describe, expect } from "bun:test";
+import { registerMocks } from "./__test-helpers.js";
+
+registerMocks();
+
 import { formatTitle, monthLabel, formatAmount } from "./activities.js";
 
 describe("formatTitle", () => {

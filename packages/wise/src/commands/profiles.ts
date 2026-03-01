@@ -1,8 +1,16 @@
 import { wiseGet } from "../client.js";
+import { writeJson, handleJsonError } from "../json.js";
+import type { BaseCommandOpts } from "../json.js";
 
-export async function profilesCommand(): Promise<void> {
+export async function profilesCommand(opts: BaseCommandOpts = {}): Promise<void> {
   try {
     const profiles = await wiseGet("/v2/profiles");
+
+    if (opts.json) {
+      writeJson(profiles);
+      return;
+    }
+
     for (const p of profiles) {
       let name = "Unknown";
       if (p.details) {
@@ -16,6 +24,7 @@ export async function profilesCommand(): Promise<void> {
       console.log(`${p.id}\t${p.type}\t${name}`);
     }
   } catch (err: any) {
+    if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(0);
   }

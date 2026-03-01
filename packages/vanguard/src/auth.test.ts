@@ -9,6 +9,7 @@ const testSessionPath = path.join(testDir, "session.json");
 
 const validSession = {
   cookies: [{ name: "test", value: "123", domain: ".example.com", path: "/" }],
+  origins: [],
   xsrfToken: "xsrf-abc-123",
   hierarchyId: "000-XXXXXXXXXX",
   createdAt: Date.now(),

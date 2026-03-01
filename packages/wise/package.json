@@ -18,6 +18,7 @@
     "compile": "bun build --compile --target=bun-linux-x64 --external chromium-bidi --external electron src/index.ts --outfile dist/wise-linux-x64 && bun build --compile --target=bun-darwin-arm64 --external chromium-bidi --external electron src/index.ts --outfile dist/wise-darwin-arm64 && bun build --compile --target=bun-windows-x64 --external chromium-bidi --external electron src/index.ts --outfile dist/wise-windows-x64.exe"
   },
   "dependencies": {
+    "@finclis/cli-utils": "workspace:*",
     "commander": "^12.0.0",
     "playwright": "^1.58.2"
   },

@@ -1,8 +1,8 @@
 import { wiseGet, getProfileId, setVerbose } from "../client.js";
 import { prompt } from "../auth.js";
 import { parseMonth, monthBounds } from "../validate.js";
-import { writeJson, handleJsonError } from "../json.js";
-import type { BaseCommandOpts } from "../json.js";
+import { writeJson, handleJsonError } from "@finclis/cli-utils";
+import type { BaseCommandOpts } from "@finclis/cli-utils";
 
 const ANSI: Record<string, string> = {
   strong: "\x1b[1m",

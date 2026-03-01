@@ -1,7 +1,7 @@
 import { wiseGet, getProfileId } from "../client.js";
 import { validateCurrency, validateDate } from "../validate.js";
-import { writeJson, handleJsonError } from "../json.js";
-import type { BaseCommandOpts } from "../json.js";
+import { writeJson, handleJsonError } from "@finclis/cli-utils";
+import type { BaseCommandOpts } from "@finclis/cli-utils";
 
 interface StatementOpts extends BaseCommandOpts {
   currency: string;

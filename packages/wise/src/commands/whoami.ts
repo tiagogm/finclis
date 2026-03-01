@@ -1,11 +1,19 @@
 import { wiseGet, requireSession } from "../client.js";
 import { DEFAULT_TTL_MS } from "../auth.js";
+import { writeJson, handleJsonError } from "../json.js";
+import type { BaseCommandOpts } from "../json.js";
 
-export async function whoamiCommand(): Promise<void> {
+export async function whoamiCommand(opts: BaseCommandOpts = {}): Promise<void> {
   const session = requireSession();
 
   try {
     const profiles = await wiseGet("/v2/profiles");
+
+    if (opts.json) {
+      writeJson({ profiles, profileId: session.profileId });
+      return;
+    }
+
     const personal = profiles.find((p: any) => p.type === "PERSONAL");
 
     if (!personal) {
@@ -51,6 +59,7 @@ export async function whoamiCommand(): Promise<void> {
       }
     }
   } catch (err: any) {
+    if (opts.json) handleJsonError(err);
     if (err.message.includes("401")) {
       console.error("Session expired. Run: wise login");
       process.exit(0);

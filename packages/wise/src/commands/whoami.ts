@@ -1,7 +1,7 @@
 import { wiseGet, requireSession } from "../client.js";
 import { DEFAULT_TTL_MS } from "../auth.js";
-import { writeJson, handleJsonError } from "../json.js";
-import type { BaseCommandOpts } from "../json.js";
+import { writeJson, handleJsonError } from "@finclis/cli-utils";
+import type { BaseCommandOpts } from "@finclis/cli-utils";
 
 export async function whoamiCommand(opts: BaseCommandOpts = {}): Promise<void> {
   const session = requireSession();

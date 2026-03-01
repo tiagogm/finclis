@@ -1,7 +1,7 @@
 import { wiseGet } from "../client.js";
 import { validateCurrency } from "../validate.js";
-import { writeJson, handleJsonError } from "../json.js";
-import type { BaseCommandOpts } from "../json.js";
+import { writeJson, handleJsonError } from "@finclis/cli-utils";
+import type { BaseCommandOpts } from "@finclis/cli-utils";
 
 export async function ratesCommand(
   source: string,

@@ -12,6 +12,31 @@ export async function logoutCommand(): Promise<void> {
     return;
   }
 
+  // Best-effort: server-side logout via Vanguard's logout endpoint
+  try {
+    const { chromium } = await import("playwright");
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const context = await browser.newContext({
+        storageState: { cookies: session.cookies, origins: session.origins },
+      });
+      const page = await context.newPage();
+      const response = await page.goto("https://my.vanguardinvestor.co.uk/logout", {
+        waitUntil: "load",
+      });
+      const finalUrl = page.url();
+      if (response?.ok() && finalUrl.includes("www.vanguardinvestor.co.uk/logout")) {
+        console.log("Server-side logout successful.");
+      } else {
+        console.warn(`Warning: server logout may have failed (landed on ${finalUrl}).`);
+      }
+    } finally {
+      await browser.close();
+    }
+  } catch (err) {
+    console.warn("Warning: server-side logout failed:", err instanceof Error ? err.message : err);
+  }
+
   // Best-effort: clear auth cookies from persistent browser profile
   // while preserving device-trust so we don't have to 2FA again
   if (fs.existsSync(BROWSER_PROFILE_DIR)) {

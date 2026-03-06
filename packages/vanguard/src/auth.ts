@@ -54,16 +54,19 @@ export function loadSession(
       !Array.isArray(parsed.cookies) ||
       !Array.isArray(parsed.origins)
     ) {
+      clearSession(sessionPath);
       console.error("Invalid session. Run: vanguard login");
       return null;
     }
 
     if (typeof parsed.createdAt !== "number" || parsed.createdAt <= 0) {
+      clearSession(sessionPath);
       console.error("Invalid session. Run: vanguard login");
       return null;
     }
 
     if (parsed.ttlMs !== undefined && (typeof parsed.ttlMs !== "number" || parsed.ttlMs <= 0)) {
+      clearSession(sessionPath);
       console.error("Invalid session. Run: vanguard login");
       return null;
     }
@@ -160,14 +163,10 @@ export async function login(ttlMinutes?: number): Promise<Session> {
       await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
     }
 
-    console.log(`Dashboard URL: ${page.url()}`);
-
     // Extract hierarchy ID from URL
     const match = DASHBOARD_RE.exec(page.url());
     if (!match) {
-      throw new Error(
-        "Could not extract hierarchy ID from dashboard URL: " + page.url()
-      );
+      throw new Error("Could not extract hierarchy ID from dashboard URL");
     }
     const hierarchyId = match[1];
 

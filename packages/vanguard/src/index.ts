@@ -7,7 +7,7 @@ import { balanceCommand } from "./commands/balance.js";
 import { holdingsCommand } from "./commands/holdings.js";
 import { performanceCommand } from "./commands/performance.js";
 import { summaryCommand } from "./commands/summary.js";
-import { setVerbose } from "./client.js";
+import { setVerbose, cleanup } from "./client.js";
 
 const program = new Command();
 
@@ -85,4 +85,8 @@ program.action(() => {
   program.help();
 });
 
-program.parse();
+try {
+  await program.parseAsync();
+} finally {
+  await cleanup();
+}

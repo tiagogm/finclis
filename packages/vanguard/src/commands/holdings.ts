@@ -1,4 +1,4 @@
-import { vanguardPost, requireSession, cleanup } from "../client.js";
+import { vanguardPost, requireSession } from "../client.js";
 import { formatGBP } from "../validate.js";
 import { writeJson, handleJsonError } from "@finclis/cli-utils";
 import type { BaseCommandOpts } from "@finclis/cli-utils";
@@ -21,14 +21,12 @@ export async function holdingsCommand(opts: BaseCommandOpts = {}): Promise<void>
 
     if (opts.json) {
       writeJson(instruments);
-      await cleanup();
-      process.exit(0);
+      return;
     }
 
     if (instruments.length === 0) {
       console.log("No holdings found.");
-      await cleanup();
-      process.exit(0);
+      return;
     }
 
     // Header
@@ -64,11 +62,8 @@ export async function holdingsCommand(opts: BaseCommandOpts = {}): Promise<void>
       );
     }
 
-    await cleanup();
-    process.exit(0);
   } catch (err: any) {
-    if (opts.json) { await cleanup(); handleJsonError(err); }
-    await cleanup();
+    if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(0);
   }

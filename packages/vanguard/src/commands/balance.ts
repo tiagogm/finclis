@@ -1,4 +1,4 @@
-import { vanguardGet, requireSession, cleanup } from "../client.js";
+import { vanguardGet, requireSession } from "../client.js";
 import { formatGBP } from "../validate.js";
 import { writeJson, handleJsonError } from "@finclis/cli-utils";
 import type { BaseCommandOpts } from "@finclis/cli-utils";
@@ -19,8 +19,7 @@ export async function balanceCommand(opts: BaseCommandOpts = {}): Promise<void> 
 
     if (opts.json) {
       writeJson({ valuation, cashBalance });
-      await cleanup();
-      process.exit(0);
+      return;
     }
 
     const total = valuation.Value?.Amount ?? 0;
@@ -33,12 +32,8 @@ export async function balanceCommand(opts: BaseCommandOpts = {}): Promise<void> 
     if (valuation.AsAt) {
       console.log(`As At:    ${valuation.AsAt}`);
     }
-
-    await cleanup();
-    process.exit(0);
   } catch (err: any) {
-    if (opts.json) { await cleanup(); handleJsonError(err); }
-    await cleanup();
+    if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(0);
   }

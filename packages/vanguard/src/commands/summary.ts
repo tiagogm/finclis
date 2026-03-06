@@ -1,4 +1,4 @@
-import { vanguardGet, requireSession, cleanup } from "../client.js";
+import { vanguardGet, requireSession } from "../client.js";
 import {
   validateDate,
   parseMonth,
@@ -90,14 +90,12 @@ export async function summaryCommand(opts: SummaryOpts): Promise<void> {
 
     if (opts.json) {
       writeJson(data);
-      await cleanup();
-      process.exit(0);
+      return;
     }
 
     if (months.length === 0) {
       console.log("No data available for the requested period.");
-      await cleanup();
-      process.exit(0);
+      return;
     }
 
     // Helper to extract values from the nested PerformanceDetail shape
@@ -219,11 +217,8 @@ export async function summaryCommand(opts: SummaryOpts): Promise<void> {
       );
     }
 
-    await cleanup();
-    process.exit(0);
   } catch (err: any) {
-    if (opts.json) { await cleanup(); handleJsonError(err); }
-    await cleanup();
+    if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(0);
   }

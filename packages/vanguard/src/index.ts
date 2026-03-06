@@ -90,3 +90,4 @@ try {
 } finally {
   await cleanup();
 }
+process.exit(0);

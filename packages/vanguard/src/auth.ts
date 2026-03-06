@@ -122,6 +122,9 @@ export async function login(ttlMinutes?: number): Promise<Session> {
     if (p !== page) await p.close();
   }
 
+  // Close any new tabs that open (tracking, ads, OAuth popups) — we only need the main page
+  context.on("page", (p) => { p.close().catch(() => {}); });
+
   try {
     await page.goto(`${BASE_URL}/en-GB/login`);
 
@@ -144,7 +147,7 @@ export async function login(ttlMinutes?: number): Promise<Session> {
           !(host === "my.vanguardinvestor.co.uk" && url.pathname.includes("/auth/"))
         );
       },
-      { timeout: 300_000 }
+      { timeout: 300_000, waitUntil: "commit" }
     );
 
     // Step 3: Check if we landed on dashboard or broken redirect
@@ -188,6 +191,7 @@ export async function login(ttlMinutes?: number): Promise<Session> {
     };
     saveSession(session);
 
+    await page.close(); // aborts in-flight requests before flushing profile
     await context.close();
 
     console.log(`Authenticated successfully. Hierarchy ID: ${hierarchyId}`);

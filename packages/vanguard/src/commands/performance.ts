@@ -1,4 +1,4 @@
-import { vanguardGet, requireSession, cleanup } from "../client.js";
+import { vanguardGet, requireSession } from "../client.js";
 import { formatGBP } from "../validate.js";
 import { writeJson, handleJsonError } from "@finclis/cli-utils";
 import type { BaseCommandOpts } from "@finclis/cli-utils";
@@ -14,8 +14,7 @@ export async function performanceCommand(opts: BaseCommandOpts = {}): Promise<vo
 
     if (opts.json) {
       writeJson(perf);
-      await cleanup();
-      process.exit(0);
+      return;
     }
 
     // API shape: { Value: { Amount }, PercentageChange, AmountChange: { Amount } }
@@ -30,12 +29,8 @@ export async function performanceCommand(opts: BaseCommandOpts = {}): Promise<vo
       `Total Return:    ${sign}£${formatGBP(Math.abs(totalReturn))} (${sign}${returnPct.toFixed(2)}%)`
     );
     console.log(`Since:           inception`);
-
-    await cleanup();
-    process.exit(0);
   } catch (err: any) {
-    if (opts.json) { await cleanup(); handleJsonError(err); }
-    await cleanup();
+    if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(0);
   }

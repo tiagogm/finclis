@@ -38,8 +38,18 @@ describe("cache read/write", () => {
   });
 
   test("loadCachedMonth returns null for missing file", () => {
-    // Uses default path which won't match testDir, so always null
-    expect(loadCachedMonth(2099, 1)).toBeNull();
+    expect(loadCachedMonth(2099, 1, testDir)).toBeNull();
+  });
+
+  test("saveCachedMonth and loadCachedMonth roundtrip", () => {
+    const data = { Month: "Jan 2020", PerformanceDetail: { NetGain: { Amount: 42 } } };
+    saveCachedMonth(2020, 1, data, testDir);
+    expect(loadCachedMonth(2020, 1, testDir)).toEqual(data);
+  });
+
+  test("saveCachedMonth zero-pads month in filename", () => {
+    saveCachedMonth(2020, 3, { x: 1 }, testDir);
+    expect(fs.existsSync(path.join(testDir, "monthly-2020-03.json"))).toBe(true);
   });
 });
 

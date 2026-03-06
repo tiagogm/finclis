@@ -1,4 +1,4 @@
-import { vanguardGet, requireSession, cleanup } from "../client.js";
+import { vanguardGet, requireSession } from "../client.js";
 import { DEFAULT_TTL_MS } from "../auth.js";
 import { formatGBP } from "../validate.js";
 import { writeJson, handleJsonError } from "@finclis/cli-utils";
@@ -15,8 +15,7 @@ export async function whoamiCommand(opts: BaseCommandOpts = {}): Promise<void> {
 
     if (opts.json) {
       writeJson(valuation);
-      await cleanup();
-      process.exit(0);
+      return;
     }
 
     console.log(`Hierarchy ID:    ${hId}`);
@@ -35,12 +34,8 @@ export async function whoamiCommand(opts: BaseCommandOpts = {}): Promise<void> {
       const label = hours > 0 ? `${hours}h ${mins % 60}m` : mins > 0 ? `${mins}m` : `${secs}s`;
       console.log(`Expires in:      ${label}`);
     }
-
-    await cleanup();
-    process.exit(0);
   } catch (err: any) {
-    if (opts.json) { await cleanup(); handleJsonError(err); }
-    await cleanup();
+    if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(0);
   }

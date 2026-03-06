@@ -10,6 +10,7 @@ export function setVerbose(enabled: boolean): void {
 let _browser: any = null;
 let _context: any = null;
 let _page: any = null;
+let _session: Session | null = null;
 
 async function getPage(session: Session): Promise<any> {
   if (_page) return _page;
@@ -39,14 +40,16 @@ async function closeContext(): Promise<void> {
 }
 
 /**
- * Load session or exit with an error.
+ * Load session or exit with an error. Memoised — only reads disk once per process.
  */
 export function requireSession(): Session {
+  if (_session) return _session;
   const session = loadSession();
   if (!session) {
     process.exit(0);
   }
-  return session;
+  _session = session;
+  return _session;
 }
 
 async function fetchViaPage(

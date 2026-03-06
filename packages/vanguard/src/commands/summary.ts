@@ -9,7 +9,6 @@ import {
 } from "../validate.js";
 import {
   isPastMonth,
-  loadCachedMonth,
   saveCachedMonth,
   parseVanguardMonthLabel,
 } from "../cache.js";

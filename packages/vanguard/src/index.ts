@@ -32,7 +32,7 @@ program
 
 program
   .command("logout")
-  .description("Log out and clear session")
+  .description("Log out and invalidate session")
   .option("-v, --verbose", "Log HTTP requests")
   .action(logoutCommand);
 

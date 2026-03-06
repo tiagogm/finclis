@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-const CACHE_DIR = path.join(os.homedir(), ".vanguard-cli", "cache");
+const DEFAULT_CACHE_DIR = path.join(os.homedir(), ".vanguard-cli", "cache");
 
 function cacheKey(year: number, month: number): string {
   const mm = String(month).padStart(2, "0");
@@ -18,9 +18,10 @@ export function isPastMonth(month: number, year: number): boolean {
 
 export function loadCachedMonth(
   year: number,
-  month: number
+  month: number,
+  cacheDir = DEFAULT_CACHE_DIR
 ): any | null {
-  const filePath = path.join(CACHE_DIR, cacheKey(year, month));
+  const filePath = path.join(cacheDir, cacheKey(year, month));
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
     return JSON.parse(raw);
@@ -32,10 +33,11 @@ export function loadCachedMonth(
 export function saveCachedMonth(
   year: number,
   month: number,
-  data: any
+  data: any,
+  cacheDir = DEFAULT_CACHE_DIR
 ): void {
-  fs.mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 });
-  const filePath = path.join(CACHE_DIR, cacheKey(year, month));
+  fs.mkdirSync(cacheDir, { recursive: true, mode: 0o700 });
+  const filePath = path.join(cacheDir, cacheKey(year, month));
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), { mode: 0o600 });
 }
 

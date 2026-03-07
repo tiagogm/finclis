@@ -81,10 +81,14 @@ async function fetchTransactions(opts: {
   lastId?: string;
 }): Promise<any[]> {
   const params = new URLSearchParams({ account_id: opts.accountId });
-  if (opts.since) params.set("since", opts.since);
+  // lastId takes precedence over since for pagination (cursor-based)
+  if (opts.lastId) {
+    params.set("since", opts.lastId);
+  } else if (opts.since) {
+    params.set("since", opts.since);
+  }
   if (opts.before) params.set("before", opts.before);
   if (opts.limit) params.set("limit", String(opts.limit));
-  if (opts.lastId) params.set("since", opts.lastId);
 
   const data = await monzoGet(`/transactions?${params}`);
   return data.transactions || [];

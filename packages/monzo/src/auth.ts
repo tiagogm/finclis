@@ -102,7 +102,7 @@ export async function prompt(question: string, hidden = false): Promise<string> 
   });
 }
 
-async function waitForCode(port: number): Promise<string> {
+async function waitForCode(port: number, expectedState: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
       const url = new URL(req.url || "/", `http://localhost:${port}`);
@@ -116,6 +116,16 @@ async function waitForCode(port: number): Promise<string> {
 
       const code = url.searchParams.get("code");
       const error = url.searchParams.get("error");
+      const state = url.searchParams.get("state");
+
+      // Validate state to prevent CSRF
+      if (state !== expectedState) {
+        res.writeHead(400, { "Content-Type": "text/html" });
+        res.end("<html><body><h1>Monzo CLI</h1><p>Error: Invalid state parameter (possible CSRF).</p></body></html>");
+        server.close();
+        reject(new Error("OAuth callback state mismatch (possible CSRF attack)"));
+        return;
+      }
 
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end(
@@ -160,6 +170,7 @@ async function tryOpenBrowser(url: string): Promise<void> {
 interface LoginOpts {
   sync?: boolean;
   from?: string;
+  fetchFn?: (path: string) => Promise<any>;
 }
 
 export async function login(opts: LoginOpts = {}): Promise<void> {
@@ -186,7 +197,7 @@ export async function login(opts: LoginOpts = {}): Promise<void> {
   console.log("\nOpening browser for Monzo authorization...");
   console.log(`Auth URL: ${authUrl}\n`);
 
-  const codePromise = waitForCode(port);
+  const codePromise = waitForCode(port, state);
 
   try {
     await tryOpenBrowser(authUrl);
@@ -295,11 +306,11 @@ export async function login(opts: LoginOpts = {}): Promise<void> {
   await saveSession(session);
   console.log(`\nAuthenticated. Account: ${selectedAccount.description || selectedAccount.id}`);
 
-  if (opts.sync) {
+  if (opts.sync && opts.fetchFn) {
     const fromDate = opts.from
       ? new Date(opts.from)
       : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
-    await syncTransactions(session, fromDate);
+    await syncTransactions(session, fromDate, opts.fetchFn);
   }
 }
 
@@ -360,7 +371,11 @@ export async function refreshSession(session: MonzoSession): Promise<MonzoSessio
   return updated;
 }
 
-export async function syncTransactions(session: MonzoSession, fromDate: Date): Promise<void> {
+export async function syncTransactions(
+  _session: MonzoSession,
+  fromDate: Date,
+  fetchFn: (path: string) => Promise<any>,
+): Promise<void> {
   fs.mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 });
 
   const now = new Date();
@@ -376,7 +391,7 @@ export async function syncTransactions(session: MonzoSession, fromDate: Date): P
     const label = `${year}-${mm}`;
 
     const params = new URLSearchParams({
-      account_id: session.account_id,
+      account_id: _session.account_id,
       since,
       before,
       limit: "100",
@@ -384,27 +399,30 @@ export async function syncTransactions(session: MonzoSession, fromDate: Date): P
 
     const transactions: any[] = [];
     let lastId: string | null = null;
+    let failed = false;
 
     while (true) {
       if (lastId) params.set("since", lastId);
 
-      const res = await fetch(`${API_URL}/transactions?${params}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (!res.ok) break;
-
-      const data = (await res.json()) as { transactions: any[] };
-      const batch = data.transactions || [];
-      transactions.push(...batch);
-
-      if (batch.length < 100) break;
-      lastId = batch[batch.length - 1].id;
+      try {
+        const data = await fetchFn(`/transactions?${params}`);
+        const batch = data.transactions || [];
+        transactions.push(...batch);
+        if (batch.length < 100) break;
+        lastId = batch[batch.length - 1].id;
+      } catch (err: any) {
+        console.error(`Failed to sync ${label}: ${err.message}`);
+        failed = true;
+        break;
+      }
     }
 
-    const cacheFile = path.join(CACHE_DIR, `transactions-${label}.json`);
-    fs.writeFileSync(cacheFile, JSON.stringify(transactions, null, 2), { mode: 0o600 });
-    console.log(`Synced ${label}: ${transactions.length} transactions`);
+    // Only write cache if we got a successful full fetch
+    if (!failed) {
+      const cacheFile = path.join(CACHE_DIR, `transactions-${label}.json`);
+      fs.writeFileSync(cacheFile, JSON.stringify(transactions, null, 2), { mode: 0o600 });
+      console.log(`Synced ${label}: ${transactions.length} transactions`);
+    }
 
     current.setUTCMonth(current.getUTCMonth() + 1);
   }

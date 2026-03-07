@@ -22,8 +22,6 @@ describe("whoami --json", () => {
       refresh_token: "ref",
       expires_at: 9999999999,
       account_id: "acc_abc",
-      client_id: "client_x",
-      client_secret: "secret_x",
     });
     mockMonzoGet.mockResolvedValueOnce({
       authenticated: true,

@@ -22,8 +22,6 @@ describe("pots --json", () => {
       refresh_token: "ref",
       expires_at: 9999999999,
       account_id: "acc_test",
-      client_id: "client_x",
-      client_secret: "secret_x",
     });
     mockMonzoGet.mockResolvedValueOnce({
       pots: [
@@ -60,8 +58,6 @@ describe("pots deposit --yes", () => {
       refresh_token: "ref",
       expires_at: 9999999999,
       account_id: "acc_test",
-      client_id: "client_x",
-      client_secret: "secret_x",
     });
     // getPotName calls monzoGet
     mockMonzoGet.mockResolvedValueOnce({

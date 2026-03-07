@@ -8,8 +8,6 @@ export const mockRequireSession = mock(() =>
     refresh_token: "test-refresh",
     expires_at: Math.floor(Date.now() / 1000) + 3600,
     account_id: "acc_test123",
-    client_id: "client_test",
-    client_secret: "secret_test",
   })
 );
 
@@ -28,6 +26,9 @@ export function registerMocks() {
     saveSession: mock(() => Promise.resolve()),
     loadSession: mock(() => Promise.resolve(null)),
     clearSession: mock(() => Promise.resolve()),
+    saveCredentials: mock(() => Promise.resolve()),
+    loadCredentials: mock(() => Promise.resolve({ client_id: "client_test", client_secret: "secret_test" })),
+    clearCredentials: mock(() => Promise.resolve()),
     prompt: mock(() => Promise.resolve("y")),
     login: mock(() => Promise.resolve()),
     logout: mock(() => Promise.resolve()),

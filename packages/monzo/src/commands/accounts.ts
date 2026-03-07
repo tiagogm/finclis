@@ -1,8 +1,9 @@
-import { monzoGet } from "../client.js";
+import { monzoGet, requireSession } from "../client.js";
+import { loadSession, saveSession, prompt } from "../auth.js";
 import { writeJson, handleJsonError } from "../json.js";
 import type { BaseCommandOpts } from "../json.js";
 
-export async function accountsCommand(opts: BaseCommandOpts = {}): Promise<void> {
+export async function accountsListCommand(opts: BaseCommandOpts = {}): Promise<void> {
   try {
     const data = await monzoGet("/accounts");
     const accounts: any[] = data.accounts || [];
@@ -50,4 +51,47 @@ export async function accountsCommand(opts: BaseCommandOpts = {}): Promise<void>
     console.error(`Failed: ${err.message}`);
     process.exit(1);
   }
+}
+
+export async function accountsSetCommand(accountId?: string): Promise<void> {
+  await requireSession();
+
+  const data = await monzoGet("/accounts");
+  const accounts: any[] = (data.accounts || []).filter((a: any) => !a.closed);
+
+  if (accounts.length === 0) {
+    console.log("No active accounts found.");
+    return;
+  }
+
+  const session = await loadSession();
+  if (!session) return;
+
+  let selected: any;
+
+  if (accountId) {
+    selected = accounts.find((a: any) => a.id === accountId);
+    if (!selected) {
+      console.error(`Account not found: ${accountId}`);
+      process.exit(1);
+    }
+  } else {
+    console.log("Active accounts:");
+    accounts.forEach((a: any, i: number) => {
+      const current = a.id === session.account_id ? " (current)" : "";
+      console.log(`  [${i + 1}] ${a.description || a.type}  (${a.type})  — ${a.id}${current}`);
+    });
+
+    const input = await prompt(`Select account [1]: `);
+    const idx = input.trim() === "" ? 1 : parseInt(input.trim(), 10);
+    if (isNaN(idx) || idx < 1 || idx > accounts.length) {
+      console.error("Invalid selection.");
+      process.exit(1);
+    }
+    selected = accounts[idx - 1];
+  }
+
+  session.account_id = selected.id;
+  await saveSession(session);
+  console.log(`Switched to: ${selected.description || selected.id}`);
 }

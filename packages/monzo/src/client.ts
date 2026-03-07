@@ -25,7 +25,7 @@ async function apiError(res: Response): Promise<Error> {
 export async function requireSession(): Promise<MonzoSession> {
   const session = await loadSession();
   if (!session) {
-    process.exit(1);
+    process.exit(0);
   }
   return session;
 }
@@ -35,8 +35,8 @@ async function getValidSession(): Promise<MonzoSession> {
   const nowSecs = Math.floor(Date.now() / 1000);
   if (session.expires_at - 60 < nowSecs) {
     if (!session.refresh_token) {
-      console.error("Session expired. Run: monzo login");
-      process.exit(1);
+      console.log("Session expired. Run: monzo login");
+      process.exit(0);
     }
     session = await refreshSession(session);
   }

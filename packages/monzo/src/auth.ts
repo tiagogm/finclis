@@ -7,17 +7,50 @@ import crypto from "node:crypto";
 export const API_URL = "https://api.monzo.com";
 export const AUTH_URL = "https://auth.monzo.com";
 
+export interface MonzoCredentials {
+  client_id: string;
+  client_secret: string;
+}
+
 export interface MonzoSession {
   access_token: string;
   refresh_token?: string;  // absent for public clients
   expires_at: number;      // Unix seconds
   account_id: string;
-  client_id: string;
-  client_secret: string;
 }
 
 const SERVICE = "com.monzo-cli";
 export const CACHE_DIR = path.join(os.homedir(), ".monzo-cli", "cache");
+
+// --- Credentials (long-lived, survives logout) ---
+
+export async function saveCredentials(creds: MonzoCredentials): Promise<void> {
+  await Bun.secrets.set({ service: SERVICE, name: "credentials", value: JSON.stringify(creds) });
+}
+
+export async function loadCredentials(): Promise<MonzoCredentials | null> {
+  try {
+    const raw = await Bun.secrets.get({ service: SERVICE, name: "credentials" });
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed.client_id !== "string" || typeof parsed.client_secret !== "string") {
+      return null;
+    }
+    return parsed as MonzoCredentials;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearCredentials(): Promise<void> {
+  try {
+    await Bun.secrets.delete({ service: SERVICE, name: "credentials" });
+  } catch {
+    // doesn't exist, that's fine
+  }
+}
+
+// --- Session (short-lived, cleared on logout) ---
 
 export async function saveSession(session: MonzoSession): Promise<void> {
   await Bun.secrets.set({ service: SERVICE, name: "session", value: JSON.stringify(session) });
@@ -27,7 +60,7 @@ export async function loadSession(): Promise<MonzoSession | null> {
   try {
     const raw = await Bun.secrets.get({ service: SERVICE, name: "session" });
     if (!raw) {
-      console.error("Not logged in. Run: monzo login");
+      console.log("Not logged in. Run: monzo login");
       return null;
     }
     const parsed = JSON.parse(raw);
@@ -35,16 +68,14 @@ export async function loadSession(): Promise<MonzoSession | null> {
       !parsed ||
       typeof parsed.access_token !== "string" ||
       typeof parsed.expires_at !== "number" ||
-      typeof parsed.account_id !== "string" ||
-      typeof parsed.client_id !== "string" ||
-      typeof parsed.client_secret !== "string"
+      typeof parsed.account_id !== "string"
     ) {
-      console.error("Invalid session. Run: monzo login");
+      console.log("Invalid session. Run: monzo login");
       return null;
     }
     return parsed as MonzoSession;
   } catch {
-    console.error("Not logged in. Run: monzo login");
+    console.log("Not logged in. Run: monzo login");
     return null;
   }
 }
@@ -172,14 +203,23 @@ async function tryOpenBrowser(url: string): Promise<void> {
 }
 
 export async function login(): Promise<void> {
-  let clientId = process.env.MONZO_CLIENT_ID || "";
-  let clientSecret = process.env.MONZO_CLIENT_SECRET || "";
+  let clientId = "";
+  let clientSecret = "";
 
-  if (!clientId) {
-    clientId = await prompt("Monzo client_id: ");
+  // 1. Try stored credentials
+  const stored = await loadCredentials();
+  if (stored) {
+    clientId = stored.client_id;
+    clientSecret = stored.client_secret;
   }
-  if (!clientSecret) {
-    clientSecret = await prompt("Monzo client_secret: ");
+
+  // 2. Fall back to env vars
+  if (!clientId) clientId = process.env.MONZO_CLIENT_ID || "";
+  if (!clientSecret) clientSecret = process.env.MONZO_CLIENT_SECRET || "";
+
+  if (!clientId || !clientSecret) {
+    console.log("No credentials found. Run: monzo auth set");
+    process.exit(0);
   }
 
   const redirectUri = "http://localhost:3000/callback";
@@ -297,8 +337,6 @@ export async function login(): Promise<void> {
     refresh_token: tokens.refresh_token,
     expires_at: expiresAt,
     account_id: selectedAccount.id,
-    client_id: clientId,
-    client_secret: clientSecret,
   };
 
   await saveSession(session);
@@ -329,13 +367,17 @@ export async function refreshSession(session: MonzoSession): Promise<MonzoSessio
   if (!session.refresh_token) {
     throw new Error("No refresh token available. Run: monzo login");
   }
+  const creds = await loadCredentials();
+  if (!creds) {
+    throw new Error("No stored credentials. Run: monzo auth set");
+  }
   const res = await fetch(`${API_URL}/oauth2/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "refresh_token",
-      client_id: session.client_id,
-      client_secret: session.client_secret,
+      client_id: creds.client_id,
+      client_secret: creds.client_secret,
       refresh_token: session.refresh_token,
     }).toString(),
   });

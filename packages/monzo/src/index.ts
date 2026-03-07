@@ -8,6 +8,7 @@ import { balanceCommand } from "./commands/balance.js";
 import { potsCommand, potsDepositCommand, potsWithdrawCommand } from "./commands/pots.js";
 import { transactionsCommand } from "./commands/transactions.js";
 import { transactionCommand } from "./commands/transaction.js";
+import { authViewCommand, authSetCommand, authClearCommand } from "./commands/auth.js";
 import { setVerbose } from "./client.js";
 
 const program = new Command();
@@ -22,6 +23,22 @@ program.hook("preAction", (_thisCommand, actionCommand) => {
     setVerbose(true);
   }
 });
+
+// Credentials
+const auth = program
+  .command("auth")
+  .description("Manage Monzo API credentials")
+  .addHelpText("after", "\nGet your client_id and client_secret at:\n  https://docs.monzo.com/#authentication")
+  .action(function(this: any) {
+    console.log("Commands:");
+    for (const cmd of this.commands) {
+      console.log(`  monzo auth ${cmd.name().padEnd(8)} ${cmd.description()}`);
+    }
+  });
+
+auth.command("view").description("Show stored credentials").action(authViewCommand);
+auth.command("set").description("Set client_id and client_secret").action(authSetCommand);
+auth.command("clear").description("Remove stored credentials").action(authClearCommand);
 
 // Auth
 program

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { monzoGet, requireSession } from "../client.js";
 import { prompt } from "../auth.js";
-import { CACHE_DIR } from "../auth.js";
+import { CACHE_DIR, type MonzoSession } from "../auth.js";
 import { parseMonth, monthBounds, validateDate } from "../validate.js";
 import { writeJson, handleJsonError } from "../json.js";
 import type { BaseCommandOpts } from "../json.js";
@@ -99,11 +99,20 @@ interface TransactionsOpts extends BaseCommandOpts {
   to?: string;
   month?: string;
   limit?: string;
+  sync?: boolean;
 }
 
 export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<void> {
   try {
     const session = await requireSession();
+
+    if (opts.sync) {
+      const fromDate = opts.from
+        ? new Date(validateDate(opts.from))
+        : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+      await syncTransactions(session, fromDate);
+      return;
+    }
 
     if (opts.from) validateDate(opts.from);
     if (opts.to) validateDate(opts.to);
@@ -137,7 +146,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
         const cached = loadCache(parsed.month, parsed.year);
         if (!cached) {
           console.error(
-            `Data older than 90 days requires a cached sync. Run: monzo login --sync`
+            `Data older than 90 days requires a cached sync. Run: monzo transactions --sync`
           );
           process.exit(1);
         }
@@ -208,7 +217,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
           const cached = loadCache(currentMonth, currentYear);
           if (!cached) {
             console.error(
-              `Data older than 90 days requires a cached sync. Run: monzo login --sync`
+              `Data older than 90 days requires a cached sync. Run: monzo transactions --sync`
             );
             process.exit(1);
           }
@@ -299,5 +308,55 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
     if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(1);
+  }
+}
+
+async function syncTransactions(session: MonzoSession, fromDate: Date): Promise<void> {
+  console.log("Monzo requires Strong Customer Authentication (SCA) to access transactions older than 90 days. Run this within 5 minutes of `monzo login` to avoid 403 errors.\n");
+  fs.mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 });
+
+  const now = new Date();
+  const current = new Date(Date.UTC(fromDate.getUTCFullYear(), fromDate.getUTCMonth(), 1));
+
+  while (current <= now) {
+    const year = current.getUTCFullYear();
+    const month = current.getUTCMonth() + 1;
+    const since = new Date(Date.UTC(year, month - 1, 1)).toISOString();
+    const before = new Date(Date.UTC(year, month, 1)).toISOString();
+
+    const mm = String(month).padStart(2, "0");
+    const label = `${year}-${mm}`;
+
+    const transactions: any[] = [];
+    let lastId: string | null = null;
+    let failed = false;
+
+    while (true) {
+      try {
+        const batch = await fetchTransactions({
+          accountId: session.account_id,
+          since: lastId || since,
+          before,
+          limit: 100,
+          lastId: lastId || undefined,
+        });
+        transactions.push(...batch);
+        if (batch.length < 100) break;
+        lastId = batch[batch.length - 1].id;
+      } catch (err: any) {
+        const is403 = err.message?.includes("403");
+        console.error(`Failed to sync ${label}: ${err.message}`);
+        failed = true;
+        break;
+      }
+    }
+
+    if (!failed) {
+      const cacheFile = path.join(CACHE_DIR, `transactions-${label}.json`);
+      fs.writeFileSync(cacheFile, JSON.stringify(transactions, null, 2), { mode: 0o600 });
+      console.log(`Synced ${label}: ${transactions.length} transactions`);
+    }
+
+    current.setUTCMonth(current.getUTCMonth() + 1);
   }
 }

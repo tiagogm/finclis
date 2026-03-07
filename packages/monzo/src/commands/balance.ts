@@ -1,11 +1,7 @@
 import { monzoGet, requireSession } from "../client.js";
+import { formatMoney } from "../format.js";
 import { writeJson, handleJsonError } from "../json.js";
 import type { BaseCommandOpts } from "../json.js";
-
-function formatMoney(pence: number, currency: string): string {
-  const amount = pence / 100;
-  return `${currency} ${amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 export async function balanceCommand(opts: BaseCommandOpts = {}): Promise<void> {
   try {

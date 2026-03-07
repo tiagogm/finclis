@@ -43,23 +43,32 @@ async function getValidSession(): Promise<MonzoSession> {
   return session;
 }
 
-export async function monzoGet(path: string): Promise<any> {
+interface FetchOpts {
+  method: string;
+  body?: string;
+  contentType?: string;
+}
+
+async function monzoFetch(path: string, opts: FetchOpts): Promise<any> {
   const session = await getValidSession();
   const url = `${API_URL}${path}`;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${session.access_token}`,
+  };
+  if (opts.contentType) headers["Content-Type"] = opts.contentType;
 
-  if (verbose) console.error(`-> GET ${url}`);
-  let res = await fetch(url, {
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  });
+  const reqInit: RequestInit = { method: opts.method, headers };
+  if (opts.body) reqInit.body = opts.body;
+
+  if (verbose) console.error(`-> ${opts.method} ${url}`);
+  let res = await fetch(url, reqInit);
   if (verbose) console.error(`<- ${res.status}`);
 
   if (res.status === 429) {
     const retryAfter = parseInt(res.headers.get("Retry-After") || "1", 10);
     await new Promise((r) => setTimeout(r, retryAfter * 1000));
-    if (verbose) console.error(`-> GET ${url} (rate-limit retry)`);
-    res = await fetch(url, {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
+    if (verbose) console.error(`-> ${opts.method} ${url} (rate-limit retry)`);
+    res = await fetch(url, reqInit);
     if (verbose) console.error(`<- ${res.status}`);
   }
 
@@ -70,82 +79,28 @@ export async function monzoGet(path: string): Promise<any> {
   return json;
 }
 
+export async function monzoGet(path: string): Promise<any> {
+  return monzoFetch(path, { method: "GET" });
+}
+
 export async function monzoPost(
   path: string,
   body: Record<string, string>,
-  contentType = "application/x-www-form-urlencoded"
 ): Promise<any> {
-  const session = await getValidSession();
-  const url = `${API_URL}${path}`;
-
-  const encoded = new URLSearchParams(body).toString();
-
-  if (verbose) console.error(`-> POST ${url}`);
-  let res = await fetch(url, {
+  return monzoFetch(path, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      "Content-Type": contentType,
-    },
-    body: encoded,
+    body: new URLSearchParams(body).toString(),
+    contentType: "application/x-www-form-urlencoded",
   });
-  if (verbose) console.error(`<- ${res.status}`);
-
-  if (res.status === 429) {
-    const retryAfter = parseInt(res.headers.get("Retry-After") || "1", 10);
-    await new Promise((r) => setTimeout(r, retryAfter * 1000));
-    if (verbose) console.error(`-> POST ${url} (rate-limit retry)`);
-    res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        "Content-Type": contentType,
-      },
-      body: encoded,
-    });
-    if (verbose) console.error(`<- ${res.status}`);
-  }
-
-  if (!res.ok) throw await apiError(res);
-
-  return res.json();
 }
 
 export async function monzoPut(
   path: string,
-  formParams: Record<string, string>
+  formParams: Record<string, string>,
 ): Promise<any> {
-  const session = await getValidSession();
-  const url = `${API_URL}${path}`;
-  const body = new URLSearchParams(formParams).toString();
-
-  if (verbose) console.error(`-> PUT ${url}`);
-  let res = await fetch(url, {
+  return monzoFetch(path, {
     method: "PUT",
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
+    body: new URLSearchParams(formParams).toString(),
+    contentType: "application/x-www-form-urlencoded",
   });
-  if (verbose) console.error(`<- ${res.status}`);
-
-  if (res.status === 429) {
-    const retryAfter = parseInt(res.headers.get("Retry-After") || "1", 10);
-    await new Promise((r) => setTimeout(r, retryAfter * 1000));
-    if (verbose) console.error(`-> PUT ${url} (rate-limit retry)`);
-    res = await fetch(url, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body,
-    });
-    if (verbose) console.error(`<- ${res.status}`);
-  }
-
-  if (!res.ok) throw await apiError(res);
-
-  return res.json();
 }

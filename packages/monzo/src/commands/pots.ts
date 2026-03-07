@@ -1,13 +1,9 @@
 import crypto from "node:crypto";
 import { monzoGet, monzoPut, requireSession } from "../client.js";
 import { prompt } from "../auth.js";
+import { formatMoney } from "../format.js";
 import { writeJson, handleJsonError } from "../json.js";
 import type { BaseCommandOpts } from "../json.js";
-
-function formatMoney(pence: number, currency = "GBP"): string {
-  const amount = pence / 100;
-  return `${currency} ${amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 export async function potsCommand(opts: BaseCommandOpts = {}): Promise<void> {
   try {

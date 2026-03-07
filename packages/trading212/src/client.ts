@@ -53,20 +53,20 @@ async function fetchWithRateLimitRetry(url: string, auth: string, maxRetries = 5
   return res;
 }
 
-function requireConfig() {
-  const config = loadConfig();
+async function requireConfig() {
+  const config = await loadConfig();
   if (!config) {
     process.exit(1);
   }
   return config;
 }
 
-export function getEnv(): Env {
-  return requireConfig().env;
+export async function getEnv(): Promise<Env> {
+  return (await requireConfig()).env;
 }
 
 export async function t212Post(path: string, body: unknown): Promise<any> {
-  const config = requireConfig();
+  const config = await requireConfig();
   const url = `${baseUrl(config.env)}${path}`;
   const auth = `Basic ${btoa(`${config.apiKey}:${config.apiSecret}`)}`;
 
@@ -100,7 +100,7 @@ export async function t212Download(url: string): Promise<string> {
 }
 
 export async function t212Get(path: string): Promise<any> {
-  const config = requireConfig();
+  const config = await requireConfig();
   const url = `${baseUrl(config.env)}${path}`;
   const auth = `Basic ${btoa(`${config.apiKey}:${config.apiSecret}`)}`;
 
@@ -124,7 +124,7 @@ export async function t212Get(path: string): Promise<any> {
  * Trading212 returns { items: [...], nextPagePath: "/equity/..." | null }
  */
 export async function t212GetAll(path: string): Promise<any[]> {
-  const config = requireConfig();
+  const config = await requireConfig();
   let currentPath: string | null = path;
   const allItems: any[] = [];
   const auth = `Basic ${btoa(`${config.apiKey}:${config.apiSecret}`)}`;

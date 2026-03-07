@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { loginCommand } from "./commands/login.js";
-import { logoutCommand } from "./commands/logout.js";
+import { authSetCommand, authViewCommand, authClearCommand } from "./commands/auth.js";
 import { whoamiCommand } from "./commands/whoami.js";
 import { cashCommand } from "./commands/cash.js";
 import { positionsCommand } from "./commands/positions.js";
@@ -24,16 +23,28 @@ program.hook("preAction", (_thisCommand, actionCommand) => {
 });
 
 // Auth
-program
-  .command("login")
-  .description("Authenticate with your Trading212 API key")
-  .option("-v, --verbose", "Log HTTP requests")
-  .action(loginCommand);
+const auth = program
+  .command("auth")
+  .description("Manage Trading212 API credentials")
+  .action(function (this: Command) {
+    this.help();
+  });
 
-program
-  .command("logout")
+auth
+  .command("set")
+  .description("Set API key and secret")
+  .option("-v, --verbose", "Log HTTP requests")
+  .action(authSetCommand);
+
+auth
+  .command("view")
+  .description("Show stored credentials")
+  .action(authViewCommand);
+
+auth
+  .command("clear")
   .description("Remove stored credentials")
-  .action(logoutCommand);
+  .action(authClearCommand);
 
 program
   .command("whoami")

@@ -4,7 +4,7 @@ export interface BaseCommandOpts {
 }
 
 export function writeJson(data: unknown): void {
-  process.stdout.write(JSON.stringify(data));
+  process.stdout.write(JSON.stringify(data) + "\n");
 }
 
 export function handleJsonError(err: any): never {

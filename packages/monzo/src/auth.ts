@@ -60,15 +60,18 @@ export async function clearSession(): Promise<void> {
 
 export async function prompt(question: string, hidden = false): Promise<string> {
   if (hidden) {
+    // execSync with hardcoded stty commands — no user input, safe from injection
     const { execSync } = await import("node:child_process");
 
     const restoreEcho = () => {
       try { execSync("stty echo", { stdio: "inherit" }); } catch {}
     };
+    const onSigInt = () => { restoreEcho(); process.exit(130); };
+    const onSigTerm = () => { restoreEcho(); process.exit(143); };
 
     process.on("exit", restoreEcho);
-    process.on("SIGINT", () => { restoreEcho(); process.exit(130); });
-    process.on("SIGTERM", () => { restoreEcho(); process.exit(143); });
+    process.on("SIGINT", onSigInt);
+    process.on("SIGTERM", onSigTerm);
 
     process.stdout.write(question);
     try {
@@ -87,6 +90,8 @@ export async function prompt(question: string, hidden = false): Promise<string> 
       restoreEcho();
       process.stdout.write("\n");
       process.removeListener("exit", restoreEcho);
+      process.removeListener("SIGINT", onSigInt);
+      process.removeListener("SIGTERM", onSigTerm);
     }
   }
 

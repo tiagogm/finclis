@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import http from "node:http";
@@ -172,13 +171,7 @@ async function tryOpenBrowser(url: string): Promise<void> {
   }
 }
 
-interface LoginOpts {
-  sync?: boolean;
-  from?: string;
-  fetchFn?: (path: string) => Promise<any>;
-}
-
-export async function login(opts: LoginOpts = {}): Promise<void> {
+export async function login(): Promise<void> {
   let clientId = process.env.MONZO_CLIENT_ID || "";
   let clientSecret = process.env.MONZO_CLIENT_SECRET || "";
 
@@ -310,13 +303,6 @@ export async function login(opts: LoginOpts = {}): Promise<void> {
 
   await saveSession(session);
   console.log(`\nAuthenticated. Account: ${selectedAccount.description || selectedAccount.id}`);
-
-  if (opts.sync && opts.fetchFn) {
-    const fromDate = opts.from
-      ? new Date(opts.from)
-      : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
-    await syncTransactions(session, fromDate, opts.fetchFn);
-  }
 }
 
 export async function logout(): Promise<void> {
@@ -376,59 +362,3 @@ export async function refreshSession(session: MonzoSession): Promise<MonzoSessio
   return updated;
 }
 
-export async function syncTransactions(
-  _session: MonzoSession,
-  fromDate: Date,
-  fetchFn: (path: string) => Promise<any>,
-): Promise<void> {
-  fs.mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 });
-
-  const now = new Date();
-  const current = new Date(Date.UTC(fromDate.getUTCFullYear(), fromDate.getUTCMonth(), 1));
-
-  while (current <= now) {
-    const year = current.getUTCFullYear();
-    const month = current.getUTCMonth() + 1;
-    const since = new Date(Date.UTC(year, month - 1, 1)).toISOString();
-    const before = new Date(Date.UTC(year, month, 1)).toISOString();
-
-    const mm = String(month).padStart(2, "0");
-    const label = `${year}-${mm}`;
-
-    const params = new URLSearchParams({
-      account_id: _session.account_id,
-      since,
-      before,
-      limit: "100",
-    });
-
-    const transactions: any[] = [];
-    let lastId: string | null = null;
-    let failed = false;
-
-    while (true) {
-      if (lastId) params.set("since", lastId);
-
-      try {
-        const data = await fetchFn(`/transactions?${params}`);
-        const batch = data.transactions || [];
-        transactions.push(...batch);
-        if (batch.length < 100) break;
-        lastId = batch[batch.length - 1].id;
-      } catch (err: any) {
-        console.error(`Failed to sync ${label}: ${err.message}`);
-        failed = true;
-        break;
-      }
-    }
-
-    // Only write cache if we got a successful full fetch
-    if (!failed) {
-      const cacheFile = path.join(CACHE_DIR, `transactions-${label}.json`);
-      fs.writeFileSync(cacheFile, JSON.stringify(transactions, null, 2), { mode: 0o600 });
-      console.log(`Synced ${label}: ${transactions.length} transactions`);
-    }
-
-    current.setUTCMonth(current.getUTCMonth() + 1);
-  }
-}

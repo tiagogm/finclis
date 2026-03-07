@@ -27,8 +27,6 @@ program.hook("preAction", (_thisCommand, actionCommand) => {
 program
   .command("login")
   .description("Authenticate via OAuth2")
-  .option("--sync", "Sync transactions after login")
-  .option("--from <date>", "Sync from date YYYY-MM-DD (with --sync)")
   .option("-v, --verbose", "Log HTTP requests")
   .action(loginCommand);
 
@@ -89,6 +87,7 @@ program
   .option("--to <date>", "End date YYYY-MM-DD")
   .option("--month <MM-YYYY>", "Month view (e.g. 03-2026)")
   .option("--limit <n>", "Page size (default 20)")
+  .option("--sync", "Sync transactions to local cache (use --from to set start date)")
   .option("--json", "Output raw JSON (auto-paginates)")
   .option("-v, --verbose", "Log HTTP requests")
   .action(transactionsCommand);

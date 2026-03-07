@@ -3,7 +3,7 @@ import { mockMonzoGet, registerMocks, captureStdout } from "./__test-helpers.js"
 
 registerMocks();
 
-const { accountsCommand } = await import("./accounts.js");
+const { accountsListCommand } = await import("./accounts.js");
 
 describe("accounts --json", () => {
   const stdout = captureStdout();
@@ -22,7 +22,7 @@ describe("accounts --json", () => {
     ];
     mockMonzoGet.mockResolvedValueOnce({ accounts });
 
-    await accountsCommand({ json: true });
+    await accountsListCommand({ json: true });
 
     expect(JSON.parse(stdout.getOutput())).toEqual(accounts);
   });

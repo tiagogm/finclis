@@ -3,7 +3,7 @@ import { Command } from "commander";
 import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
 import { whoamiCommand } from "./commands/whoami.js";
-import { accountsCommand } from "./commands/accounts.js";
+import { accountsListCommand, accountsSetCommand } from "./commands/accounts.js";
 import { balanceCommand } from "./commands/balance.js";
 import { potsCommand, potsDepositCommand, potsWithdrawCommand } from "./commands/pots.js";
 import { transactionsCommand } from "./commands/transactions.js";
@@ -60,12 +60,28 @@ program
   .option("-v, --verbose", "Log HTTP requests")
   .action(whoamiCommand);
 
-program
+const accounts = program
   .command("accounts")
+  .description("Manage Monzo accounts")
+  .action(function(this: any) {
+    console.log("Commands:");
+    for (const cmd of this.commands) {
+      console.log(`  monzo accounts ${cmd.name().padEnd(8)} ${cmd.description()}`);
+    }
+  });
+
+accounts
+  .command("list")
   .description("List all accounts")
   .option("--json", "Output raw JSON")
   .option("-v, --verbose", "Log HTTP requests")
-  .action(accountsCommand);
+  .action(accountsListCommand);
+
+accounts
+  .command("set [accountId]")
+  .description("Switch active account")
+  .option("-v, --verbose", "Log HTTP requests")
+  .action(accountsSetCommand);
 
 program
   .command("balance")

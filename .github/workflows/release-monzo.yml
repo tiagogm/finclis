@@ -1,0 +1,28 @@
+name: Release monzo-cli
+
+on:
+  push:
+    tags:
+      - "monzo-cli/v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install
+      - name: Compile binaries
+        working-directory: packages/monzo
+        run: bun run compile
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packages/monzo/dist/monzo-linux-x64
+            packages/monzo/dist/monzo-darwin-arm64
+            packages/monzo/dist/monzo-windows-x64.exe

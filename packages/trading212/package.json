@@ -1,0 +1,29 @@
+{
+  "name": "trading212-cli",
+  "version": "0.1.0",
+  "description": "Unofficial CLI for Trading212 REST API",
+  "author": "Tiago Morais",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "bun": ">=1.2.21"
+  },
+  "bin": {
+    "trading212": "./trading212"
+  },
+  "scripts": {
+    "trading212": "bun ./trading212",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "compile": "bun build --compile --target=bun-linux-x64 src/index.ts --outfile dist/trading212-linux-x64 && bun build --compile --target=bun-darwin-arm64 src/index.ts --outfile dist/trading212-darwin-arm64 && bun build --compile --target=bun-windows-x64 src/index.ts --outfile dist/trading212-windows-x64.exe"
+  },
+  "dependencies": {
+    "@finclis/cli-utils": "workspace:*",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "bun-types": "^1.3.9",
+    "typescript": "^5.0.0"
+  }
+}

@@ -116,11 +116,11 @@ pots
 program
   .command("transactions")
   .description("Browse transactions")
-  .option("--from <date>", "Start date YYYY-MM-DD")
-  .option("--to <date>", "End date YYYY-MM-DD")
+  .option("--from <date>", "Start date DD-MM-YYYY")
+  .option("--to <date>", "End date DD-MM-YYYY")
   .option("--month <MM-YYYY>", "Month view (e.g. 03-2026)")
   .option("--limit <n>", "Page size (default 20)")
-  .option("--sync", "Sync transactions to local cache (use --from to set start date)")
+  .option("--cache", "Cache transactions locally (use --from to set start date)")
   .option("--json", "Output raw JSON (auto-paginates)")
   .option("-v, --verbose", "Log HTTP requests")
   .action(transactionsCommand);

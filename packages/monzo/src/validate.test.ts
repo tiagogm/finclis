@@ -1,9 +1,16 @@
 import { describe, it, expect } from "bun:test";
-import { validateDate, parseMonth, monthBounds } from "./validate.js";
+import { validateDate, parseDateValue, parseMonth, monthBounds } from "./validate.js";
 
 describe("validateDate", () => {
-  it("accepts valid YYYY-MM-DD", () => {
-    expect(validateDate("2026-01-15")).toBe("2026-01-15");
+  it("accepts valid DD-MM-YYYY", () => {
+    expect(validateDate("15-01-2026")).toBe("15-01-2026");
+  });
+});
+
+describe("parseDateValue", () => {
+  it("parses DD-MM-YYYY into a UTC Date", () => {
+    const d = parseDateValue("15-03-2026");
+    expect(d.toISOString()).toBe("2026-03-15T00:00:00.000Z");
   });
 });
 

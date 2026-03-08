@@ -1,5 +1,3 @@
-import readline from "node:readline";
-
 export type Env = "live" | "demo";
 
 export interface Config {
@@ -57,49 +55,3 @@ export function baseUrl(env: Env): string {
     : "https://live.trading212.com/api/v0";
 }
 
-export async function prompt(question: string, hidden = false): Promise<string> {
-  if (hidden) {
-    const { execSync } = await import("node:child_process");
-
-    const restoreEcho = () => {
-      try { execSync("stty echo", { stdio: "inherit" }); } catch {}
-    };
-
-    process.on("exit", restoreEcho);
-    process.on("SIGINT", () => { restoreEcho(); process.exit(130); });
-    process.on("SIGTERM", () => { restoreEcho(); process.exit(143); });
-
-    process.stdout.write(question);
-    try {
-      execSync("stty -echo", { stdio: "inherit" });
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: new (await import("node:stream")).Writable({
-          write(_chunk, _encoding, callback) { callback(); },
-        }),
-      });
-      const answer = await new Promise<string>((resolve) => {
-        rl.question("", (ans) => {
-          rl.close();
-          resolve(ans);
-        });
-      });
-      return answer;
-    } finally {
-      restoreEcho();
-      process.stdout.write("\n");
-      process.removeListener("exit", restoreEcho);
-    }
-  }
-
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-  return new Promise((resolve) => {
-    rl.question(question, (answer: string) => {
-      rl.close();
-      resolve(answer);
-    });
-  });
-}

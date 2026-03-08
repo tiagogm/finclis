@@ -1,5 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@finclis/cli-utils": ["../cli-utils/src/index.ts"]
+    }
+  },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]
 }

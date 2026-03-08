@@ -27,10 +27,10 @@ export function registerHistoryCommand(program: Command): void {
   history
     .command("export")
     .description("Monthly cash-flow summary via CSV export (~15–30s)")
-    .option("--month <MM-YYYY>", "Specific month (default: current)")
+    .option("--month <YYYY-MM>", "Specific month (default: current)")
     .option("--year <YYYY>", "Full year table")
-    .option("--from <date>", "Start date (YYYY-MM-DD)")
-    .option("--to <date>", "End date (YYYY-MM-DD)")
+    .option("--from <YYYY-MM-DD>", "Start date")
+    .option("--to <YYYY-MM-DD>", "End date")
     .option("--json", "Output raw JSON")
     .option("-v, --verbose", "Log HTTP requests")
     .action(summaryCommand);

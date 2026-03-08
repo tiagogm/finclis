@@ -2,24 +2,24 @@ import { test, describe, expect } from "bun:test";
 import { parseMonth, parseYear, monthBounds, yearBounds, formatGBP } from "./validate.js";
 
 describe("parseMonth", () => {
-  test("parses valid MM-YYYY", () => {
-    expect(parseMonth("02-2026")).toEqual({ month: 2, year: 2026 });
+  test("parses valid YYYY-MM", () => {
+    expect(parseMonth("2026-02")).toEqual({ month: 2, year: 2026 });
   });
 
   test("parses single-digit month", () => {
-    expect(parseMonth("1-2026")).toEqual({ month: 1, year: 2026 });
+    expect(parseMonth("2026-1")).toEqual({ month: 1, year: 2026 });
   });
 
   test("returns null for invalid format", () => {
-    expect(parseMonth("2026-02")).toBeNull();
+    expect(parseMonth("02-2026")).toBeNull();
   });
 
   test("returns null for month 0", () => {
-    expect(parseMonth("00-2026")).toBeNull();
+    expect(parseMonth("2026-00")).toBeNull();
   });
 
   test("returns null for month 13", () => {
-    expect(parseMonth("13-2026")).toBeNull();
+    expect(parseMonth("2026-13")).toBeNull();
   });
 
   test("returns null for empty string", () => {

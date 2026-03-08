@@ -65,7 +65,7 @@ export async function summaryCommand(opts: SummaryOpts): Promise<void> {
       if (opts.month) {
         const parsed = parseMonth(opts.month);
         if (!parsed) {
-          console.error(`Invalid month: "${opts.month}". Expected MM-YYYY.`);
+          console.error(`Invalid month: "${opts.month}". Expected YYYY-MM.`);
           process.exit(0);
           return;
         }

@@ -1,8 +1,8 @@
 import path from "node:path";
 import os from "node:os";
 import http from "node:http";
-import readline from "node:readline";
 import crypto from "node:crypto";
+import { prompt } from "@finclis/cli-utils";
 
 export const API_URL = "https://api.monzo.com";
 export const AUTH_URL = "https://auth.monzo.com";
@@ -86,55 +86,6 @@ export async function clearSession(): Promise<void> {
   } catch {
     // doesn't exist, that's fine
   }
-}
-
-export async function prompt(question: string, hidden = false): Promise<string> {
-  if (hidden) {
-    // execSync with hardcoded stty commands — no user input, safe from injection
-    const { execSync } = await import("node:child_process");
-
-    const restoreEcho = () => {
-      try { execSync("stty echo", { stdio: "inherit" }); } catch {}
-    };
-    const onSigInt = () => { restoreEcho(); process.exit(130); };
-    const onSigTerm = () => { restoreEcho(); process.exit(143); };
-
-    process.on("exit", restoreEcho);
-    process.on("SIGINT", onSigInt);
-    process.on("SIGTERM", onSigTerm);
-
-    process.stdout.write(question);
-    try {
-      execSync("stty -echo", { stdio: "inherit" });
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: new (await import("node:stream")).Writable({
-          write(_chunk, _encoding, callback) { callback(); },
-        }),
-      });
-      const answer = await new Promise<string>((resolve) => {
-        rl.question("", (ans) => { rl.close(); resolve(ans); });
-      });
-      return answer;
-    } finally {
-      restoreEcho();
-      process.stdout.write("\n");
-      process.removeListener("exit", restoreEcho);
-      process.removeListener("SIGINT", onSigInt);
-      process.removeListener("SIGTERM", onSigTerm);
-    }
-  }
-
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-  return new Promise((resolve) => {
-    rl.question(question, (answer: string) => {
-      rl.close();
-      resolve(answer);
-    });
-  });
 }
 
 async function waitForCode(port: number, expectedState: string): Promise<string> {

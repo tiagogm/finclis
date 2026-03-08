@@ -2,25 +2,25 @@ import { describe, it, expect } from "bun:test";
 import { validateDate, parseDateValue, parseMonth, monthBounds } from "./validate.js";
 
 describe("validateDate", () => {
-  it("accepts valid DD-MM-YYYY", () => {
-    expect(validateDate("15-01-2026")).toBe("15-01-2026");
+  it("accepts valid YYYY-MM-DD", () => {
+    expect(validateDate("2026-01-15")).toBe("2026-01-15");
   });
 });
 
 describe("parseDateValue", () => {
-  it("parses DD-MM-YYYY into a UTC Date", () => {
-    const d = parseDateValue("15-03-2026");
+  it("parses YYYY-MM-DD into a UTC Date", () => {
+    const d = parseDateValue("2026-03-15");
     expect(d.toISOString()).toBe("2026-03-15T00:00:00.000Z");
   });
 });
 
 describe("parseMonth", () => {
-  it("parses valid M-YYYY and rejects invalid", () => {
-    expect(parseMonth("3-2026")).toEqual({ month: 3, year: 2026 });
-    expect(parseMonth("12-2025")).toEqual({ month: 12, year: 2025 });
+  it("parses valid YYYY-M and rejects invalid", () => {
+    expect(parseMonth("2026-3")).toEqual({ month: 3, year: 2026 });
+    expect(parseMonth("2025-12")).toEqual({ month: 12, year: 2025 });
     expect(parseMonth("invalid")).toBeNull();
-    expect(parseMonth("13-2026")).toBeNull();
-    expect(parseMonth("0-2026")).toBeNull();
+    expect(parseMonth("2026-13")).toBeNull();
+    expect(parseMonth("2026-0")).toBeNull();
   });
 });
 

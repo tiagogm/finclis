@@ -1,4 +1,5 @@
 import { loadConfig, baseUrl, type Env } from "./auth.js";
+import { parseApiError } from "@finclis/cli-utils";
 
 let verbose = false;
 
@@ -8,23 +9,6 @@ export function setVerbose(enabled: boolean): void {
   verbose = enabled;
 }
 
-async function apiError(res: Response): Promise<Error> {
-  let message = `API error ${res.status}`;
-  try {
-    const body = await res.json();
-    if (verbose) console.error(`<- body: ${JSON.stringify(body)}`);
-    if (body.message) {
-      message += `: ${body.message}`;
-    } else if (body.error) {
-      message += `: ${body.error}`;
-    } else if (body.code) {
-      message += `: ${body.code}`;
-    }
-  } catch {
-    // Not JSON — just use status code
-  }
-  return new Error(message);
-}
 
 async function sleep(ms: number): Promise<void> {
   // Suppress terminal echo while waiting so keystrokes don't clutter output
@@ -86,7 +70,7 @@ export async function t212Post(path: string, body: unknown, maxRetries = 5): Pro
   if (verbose) console.error(`<- ${res.status}`);
 
   if (!res.ok) {
-    throw await apiError(res);
+    throw await parseApiError(res, verbose);
   }
 
   const json = await res.json();
@@ -116,7 +100,7 @@ export async function t212Get(path: string): Promise<any> {
   if (verbose) console.error(`<- ${res.status}`);
 
   if (!res.ok) {
-    throw await apiError(res);
+    throw await parseApiError(res, verbose);
   }
 
   const json = await res.json();
@@ -144,7 +128,7 @@ export async function t212GetAll(path: string): Promise<any[]> {
     if (verbose) console.error(`<- ${reqRes.status}`);
 
     if (!reqRes.ok) {
-      throw await apiError(reqRes);
+      throw await parseApiError(reqRes, verbose);
     }
 
     const json: unknown = await reqRes.json();

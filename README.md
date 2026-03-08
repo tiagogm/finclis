@@ -4,12 +4,16 @@ Unofficial CLIs for financial services. Each package is independently compiled a
 
 ## Packages
 
-| Package | Command | Description |
-|---|---|---|
-| [wise-cli](packages/wise/README.md) | `wise` | Unofficial CLI for Wise (TransferWise) |
-| [vanguard-cli](packages/vanguard/README.md) | `vanguard` | Unofficial CLI for Vanguard Investor UK |
+| Package | Command | Description | Auth |
+|---|---|---|---|
+| [monzo-cli](packages/monzo/README.md) | `monzo` | Unofficial CLI for Monzo | OAuth2 (browser approval) |
+| [trading212-cli](packages/trading212/README.md) | `trading212` | Unofficial CLI for Trading212 | API key |
+| [wise-cli](packages/wise/README.md) | `wise` | Unofficial CLI for Wise (TransferWise) | Browser-based 2FA |
+| [vanguard-cli](packages/vanguard/README.md) | `vanguard` | Unofficial CLI for Vanguard Investor UK | Browser-based 2FA |
 
 ## Installation
+
+### From source
 
 Requires [Bun](https://bun.sh).
 
@@ -19,27 +23,22 @@ cd finclis
 bun install
 ```
 
+### Prebuilt binaries
+
+Standalone binaries (no Bun required) are published for each release on [GitHub Releases](https://github.com/tiagogm/finclis/releases). Download the binary for your platform and put it on your `PATH`.
+
 See each package README for usage.
 
-## Architecture
+## Authorization
 
-Each CLI is a standalone TypeScript package built on [Bun](https://bun.sh) and [Playwright](https://playwright.dev).
+Each CLI uses a different auth method:
 
-### Authorization
-
-All CLIs use the same browser-based auth pattern:
-
-1. **Login** — Chromium opens the service's login page. The user completes the normal flow (email, password, 2FA) in the browser window. Automation-detection flags are disabled and a persistent browser profile is reused across logins so device trust and captcha cookies carry over between sessions.
-
-2. **Token extraction** — Once the browser lands on the post-login dashboard, the CLI extracts whatever credentials the service exposes (Bearer tokens, cookies, XSRF tokens, account identifiers).
-
-3. **Session file** — Credentials are written to `~/.<cli-name>/session.json` (mode `0600`, directory mode `0700`). The file includes a `createdAt` timestamp and configurable TTL (default 60 minutes). Expired sessions are rejected on load.
-
-4. **API requests** — Commands read the session file and call the service APIs directly — no browser involved at runtime.
-
-5. **Step-up auth** — Some write operations trigger a secondary authentication challenge from the service (e.g. SMS, password, PIN). The CLI handles these interactively in the terminal.
-
-6. **Logout** — Revokes credentials server-side, clears auth cookies from the persistent browser profile (preserving device trust cookies), then deletes the session file.
+| CLI | Method | Credentials stored |
+|---|---|---|
+| `monzo` | OAuth2 — prompts for client credentials, opens browser for Monzo app approval | OS keychain (`Bun.secrets`) |
+| `trading212` | API key — generate in Trading212 → Settings → API | OS keychain (`Bun.secrets`) |
+| `wise` | Browser-based — Chromium opens Wise login page for email + 2FA | `~/.wise-cli/session.json` |
+| `vanguard` | Browser-based — Chromium opens Vanguard login page for email + 2FA | `~/.vanguard-cli/session.json` |
 
 ## Development
 

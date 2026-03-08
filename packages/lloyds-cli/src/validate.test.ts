@@ -1,17 +1,37 @@
 import { test, describe, expect } from "bun:test";
-import { validateMonth, isPastMonth, formatGBP } from "./validate.js";
+import { parseMonth, isPastMonth, formatGBP } from "./validate.js";
 
-describe("validateMonth", () => {
+describe("parseMonth", () => {
   test("parses valid MM-YYYY", () => {
-    expect(validateMonth("02-2026")).toEqual({ month: 2, year: 2026, key: "2026-02" });
+    expect(parseMonth("02-2026")).toEqual({ month: 2, year: 2026, key: "2026-02" });
   });
 
   test("parses single-digit month", () => {
-    expect(validateMonth("1-2026")).toEqual({ month: 1, year: 2026, key: "2026-01" });
+    expect(parseMonth("1-2026")).toEqual({ month: 1, year: 2026, key: "2026-01" });
   });
 
   test("zero-pads key", () => {
-    expect(validateMonth("3-2025").key).toBe("2025-03");
+    expect(parseMonth("3-2025")?.key).toBe("2025-03");
+  });
+
+  test("returns null for invalid format", () => {
+    expect(parseMonth("2026-02")).toBeNull();
+  });
+
+  test("returns null for month 0", () => {
+    expect(parseMonth("00-2026")).toBeNull();
+  });
+
+  test("returns null for month 13", () => {
+    expect(parseMonth("13-2026")).toBeNull();
+  });
+
+  test("returns null for empty string", () => {
+    expect(parseMonth("")).toBeNull();
+  });
+
+  test("returns null for non-numeric input", () => {
+    expect(parseMonth("ab-2026")).toBeNull();
   });
 });
 
@@ -31,7 +51,7 @@ describe("isPastMonth", () => {
 
   test("previous month same year returns true", () => {
     const now = new Date();
-    const prevMonth = now.getMonth(); // getMonth() is 0-indexed, so this is last month (1-indexed)
+    const prevMonth = now.getMonth(); // 0-indexed current month = 1-indexed previous month
     if (prevMonth > 0) {
       expect(isPastMonth(now.getFullYear(), prevMonth)).toBe(true);
     }

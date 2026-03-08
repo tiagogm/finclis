@@ -1,6 +1,6 @@
 import { getClient, requireSession } from "../client.js";
 import {
-  validateMonth,
+  parseMonth,
   isPastMonth,
   currentMonthKey,
   formatGBP,
@@ -23,9 +23,18 @@ export async function summaryCommand(opts: SummaryOpts): Promise<void> {
   requireSession();
 
   try {
-    const monthKey = opts.month
-      ? validateMonth(opts.month).key
-      : currentMonthKey();
+    let monthKey: string;
+    if (opts.month) {
+      const parsed = parseMonth(opts.month);
+      if (!parsed) {
+        console.error(`Invalid month: "${opts.month}". Expected MM-YYYY (e.g. 01-2026).`);
+        process.exit(0);
+      }
+      monthKey = parsed.key;
+    } else {
+      monthKey = currentMonthKey();
+    }
+
     const [year, mon] = monthKey.split("-").map(Number);
     const isPast = isPastMonth(year, mon);
     const useCache = opts.cache !== false;

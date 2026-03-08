@@ -1,5 +1,5 @@
 import { getClient, requireSession } from "../client.js";
-import { validateMonth, isPastMonth, currentMonthKey, formatGBP } from "../validate.js";
+import { parseMonth, isPastMonth, currentMonthKey, formatGBP } from "../validate.js";
 import { readCachedTransactions, writeCachedTransactions } from "../cache.js";
 import { mapTransaction, TransactionType } from "../aggregator.js";
 import { writeJson, handleJsonError } from "@finclis/cli-utils";
@@ -14,9 +14,18 @@ export async function transactionsCommand(opts: TransactionsOpts): Promise<void>
   requireSession();
 
   try {
-    const monthKey = opts.month
-      ? validateMonth(opts.month).key
-      : currentMonthKey();
+    let monthKey: string;
+    if (opts.month) {
+      const parsed = parseMonth(opts.month);
+      if (!parsed) {
+        console.error(`Invalid month: "${opts.month}". Expected MM-YYYY (e.g. 01-2026).`);
+        process.exit(0);
+      }
+      monthKey = parsed.key;
+    } else {
+      monthKey = currentMonthKey();
+    }
+
     const [year, mon] = monthKey.split("-").map(Number);
     const isPast = isPastMonth(year, mon);
     const useCache = opts.cache !== false;

@@ -36,9 +36,13 @@ interface MonthSummary {
   netIn: number;
 }
 
+// CSV dates arrive as "2026-03-15 10:30:00" (no timezone) or ISO with Z
+function parseCSVDate(str: string): Date {
+  return new Date(str.replace(" ", "T") + (str.includes("Z") ? "" : "Z"));
+}
+
 function monthKey(dateStr: string): string {
-  // dateStr from CSV: "2026-03-15 10:30:00" or ISO
-  const d = new Date(dateStr.replace(" ", "T") + (dateStr.includes("Z") ? "" : "Z"));
+  const d = parseCSVDate(dateStr);
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
@@ -59,7 +63,7 @@ function isCurrentMonth(fromDate: string, toDate: string): boolean {
 }
 
 async function fetchCSV(fromDate: string, toDate: string): Promise<string> {
-  const INITIAL_WAIT_MS = 5_000;
+  const INITIAL_WAIT_MS = 8_000;
   const POLL_INTERVAL_MS = 10_000;
   const MAX_ATTEMPTS = 30;
 
@@ -131,7 +135,7 @@ function aggregateByMonth(
   const map = new Map<string, MonthSummary>();
 
   for (const tx of txns) {
-    const d = new Date(tx.date.replace(" ", "T") + (tx.date.includes("Z") ? "" : "Z"));
+    const d = parseCSVDate(tx.date);
     if (d < from || d > to) continue;
 
     const key = monthKey(tx.date);
@@ -168,12 +172,12 @@ export async function summaryCommand(opts: SummaryOpts): Promise<void> {
     const flagCount = [opts.month, opts.year, opts.from || opts.to].filter(Boolean).length;
     if (flagCount > 1) {
       console.error("Options --month, --year, and --from/--to are mutually exclusive.");
-      process.exit(0);
+      process.exit(1);
     }
 
     if ((opts.from && !opts.to) || (!opts.from && opts.to)) {
       console.error("--from and --to must be used together.");
-      process.exit(0);
+      process.exit(1);
     }
 
     let fromDate: string;
@@ -184,7 +188,7 @@ export async function summaryCommand(opts: SummaryOpts): Promise<void> {
       const year = parseYear(opts.year);
       if (!year) {
         console.error(`Invalid year: "${opts.year}". Expected YYYY.`);
-        process.exit(0);
+        process.exit(1);
         return;
       }
       const bounds = yearBounds(year);
@@ -202,7 +206,7 @@ export async function summaryCommand(opts: SummaryOpts): Promise<void> {
         const parsed = parseMonth(opts.month);
         if (!parsed) {
           console.error(`Invalid month: "${opts.month}". Expected MM-YYYY.`);
-          process.exit(0);
+          process.exit(1);
           return;
         }
         month = parsed.month;
@@ -315,6 +319,6 @@ export async function summaryCommand(opts: SummaryOpts): Promise<void> {
   } catch (err: any) {
     if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
-    process.exit(0);
+    process.exit(1);
   }
 }

@@ -5,12 +5,12 @@ const YEAR_RE = /^(\d{4})$/;
 export function validateDate(value: string): string {
   if (!DATE_RE.test(value)) {
     console.error(`Invalid date: "${value}". Expected YYYY-MM-DD.`);
-    process.exit(0);
+    process.exit(1);
   }
   const d = new Date(value);
   if (isNaN(d.getTime())) {
     console.error(`Invalid date: "${value}".`);
-    process.exit(0);
+    process.exit(1);
   }
   return value;
 }

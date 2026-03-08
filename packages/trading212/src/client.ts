@@ -38,18 +38,22 @@ async function sleep(ms: number): Promise<void> {
   }
 }
 
-async function fetchWithRateLimitRetry(url: string, auth: string, maxRetries = 5): Promise<Response> {
-  let res = await fetch(url, { headers: { Authorization: auth } });
+function makeAuthHeader(apiKey: string, apiSecret: string): string {
+  return `Basic ${btoa(`${apiKey}:${apiSecret}`)}`;
+}
 
+async function withRateLimitRetry(
+  requestFn: () => Promise<Response>,
+  maxRetries = 5
+): Promise<Response> {
+  let res = await requestFn();
   for (let attempt = 1; attempt <= maxRetries && res.status === 429; attempt++) {
     const retryAfter = res.headers.get("retry-after");
     const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : RATE_LIMIT_COOLDOWN_MS;
     process.stderr.write(`\nRate limited (429). Waiting ${waitMs / 1000}s... (attempt ${attempt}/${maxRetries})\n`);
     await sleep(waitMs);
-    if (verbose) console.error(`-> GET ${url} (retry ${attempt})`);
-    res = await fetch(url, { headers: { Authorization: auth } });
+    res = await requestFn();
   }
-
   return res;
 }
 
@@ -65,17 +69,20 @@ export async function getEnv(): Promise<Env> {
   return (await requireConfig()).env;
 }
 
-export async function t212Post(path: string, body: unknown): Promise<any> {
+export async function t212Post(path: string, body: unknown, maxRetries = 5): Promise<any> {
   const config = await requireConfig();
   const url = `${baseUrl(config.env)}${path}`;
-  const auth = `Basic ${btoa(`${config.apiKey}:${config.apiSecret}`)}`;
+  const auth = makeAuthHeader(config.apiKey, config.apiSecret);
 
   if (verbose) console.error(`-> POST ${url}`);
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { Authorization: auth, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const res = await withRateLimitRetry(
+    () => fetch(url, {
+      method: "POST",
+      headers: { Authorization: auth, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+    maxRetries
+  );
   if (verbose) console.error(`<- ${res.status}`);
 
   if (!res.ok) {
@@ -102,10 +109,10 @@ export async function t212Download(url: string): Promise<string> {
 export async function t212Get(path: string): Promise<any> {
   const config = await requireConfig();
   const url = `${baseUrl(config.env)}${path}`;
-  const auth = `Basic ${btoa(`${config.apiKey}:${config.apiSecret}`)}`;
+  const auth = makeAuthHeader(config.apiKey, config.apiSecret);
 
   if (verbose) console.error(`-> GET ${url}`);
-  const res = await fetchWithRateLimitRetry(url, auth);
+  const res = await withRateLimitRetry(() => fetch(url, { headers: { Authorization: auth } }));
   if (verbose) console.error(`<- ${res.status}`);
 
   if (!res.ok) {
@@ -127,13 +134,13 @@ export async function t212GetAll(path: string): Promise<any[]> {
   const config = await requireConfig();
   let currentPath: string | null = path;
   const allItems: any[] = [];
-  const auth = `Basic ${btoa(`${config.apiKey}:${config.apiSecret}`)}`;
+  const auth = makeAuthHeader(config.apiKey, config.apiSecret);
 
   while (currentPath !== null) {
     const reqPath: string = currentPath;
     const reqUrl = `${baseUrl(config.env)}${reqPath}`;
     if (verbose) console.error(`-> GET ${reqUrl}`);
-    const reqRes = await fetchWithRateLimitRetry(reqUrl, auth);
+    const reqRes = await withRateLimitRetry(() => fetch(reqUrl, { headers: { Authorization: auth } }));
     if (verbose) console.error(`<- ${reqRes.status}`);
 
     if (!reqRes.ok) {

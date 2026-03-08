@@ -6,10 +6,10 @@ Unofficial CLIs for financial services. Each package is independently compiled a
 
 | Package | Command | Description | Auth |
 |---|---|---|---|
-| [monzo-cli](packages/monzo/README.md) | `monzo` | Unofficial CLI for Monzo | OAuth2 (browser approval) |
+| [monzo-cli](packages/monzo/README.md) | `monzo` | Unofficial CLI for Monzo | OAuth2 |
 | [trading212-cli](packages/trading212/README.md) | `trading212` | Unofficial CLI for Trading212 | API key |
-| [wise-cli](packages/wise/README.md) | `wise` | Unofficial CLI for Wise (TransferWise) | Browser-based 2FA |
-| [vanguard-cli](packages/vanguard/README.md) | `vanguard` | Unofficial CLI for Vanguard Investor UK | Browser-based 2FA |
+| [wise-cli](packages/wise/README.md) | `wise` | Unofficial CLI for Wise (TransferWise) | Browser |
+| [vanguard-cli](packages/vanguard/README.md) | `vanguard` | Unofficial CLI for Vanguard Investor UK | Browser |
 
 ## Installation
 
@@ -31,14 +31,11 @@ See each package README for usage.
 
 ## Authorization
 
-Each CLI uses a different auth method:
-
-| CLI | Method | Credentials stored |
+| Method | How it works | Credentials stored |
 |---|---|---|
-| `monzo` | OAuth2 — prompts for client credentials, opens browser for Monzo app approval | OS keychain (`Bun.secrets`) |
-| `trading212` | API key — generate in Trading212 → Settings → API | OS keychain (`Bun.secrets`) |
-| `wise` | Browser-based — Chromium opens Wise login page for email + 2FA | `~/.wise-cli/session.json` |
-| `vanguard` | Browser-based — Chromium opens Vanguard login page for email + 2FA | `~/.vanguard-cli/session.json` |
+| OAuth2 | Run `auth set` to store client credentials, then `login` to complete the OAuth2 flow in the browser and fetch an access token | OS keychain via `Bun.secrets` |
+| API key | Run `auth set` to enter your API key; key is stored immediately — no login step needed | OS keychain via `Bun.secrets` |
+| Browser | Run `login` — Chromium opens the service login page; email, password, and 2FA are completed directly in the CLI-controlled browser window. Session cookies are saved locally and reused for all subsequent requests | `~/.<cli>-cli/session.json` |
 
 ## Development
 

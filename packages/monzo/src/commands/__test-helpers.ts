@@ -33,6 +33,7 @@ export function registerMocks() {
     login: mock(() => Promise.resolve()),
     logout: mock(() => Promise.resolve()),
     refreshSession: mock(() => Promise.resolve({})),
+    selectAccount: mock((accounts: any[]) => Promise.resolve(accounts[0])),
   }));
 
   mock.module("../json.js", () => ({

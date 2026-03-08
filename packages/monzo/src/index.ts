@@ -7,7 +7,7 @@ import { accountsListCommand, accountsSetCommand } from "./commands/accounts.js"
 import { balanceCommand } from "./commands/balance.js";
 import { potsCommand, potsDepositCommand, potsWithdrawCommand } from "./commands/pots.js";
 import { transactionsCommand } from "./commands/transactions.js";
-import { transactionCommand } from "./commands/transaction.js";
+import { summaryCommand } from "./commands/summary.js";
 import { authViewCommand, authSetCommand, authClearCommand } from "./commands/auth.js";
 import { setVerbose } from "./client.js";
 
@@ -79,7 +79,7 @@ accounts
 
 accounts
   .command("set [accountId]")
-  .description("Switch active account")
+  .description("Switch active account (interactive, or pass account ID)")
   .option("-v, --verbose", "Log HTTP requests")
   .action(accountsSetCommand);
 
@@ -126,11 +126,12 @@ program
   .action(transactionsCommand);
 
 program
-  .command("transaction <id>")
-  .description("Show a single transaction by ID")
+  .command("summary")
+  .description("Monthly spending breakdown by category")
+  .option("--month <MM-YYYY>", "Month to summarise (default: current)")
   .option("--json", "Output raw JSON")
   .option("-v, --verbose", "Log HTTP requests")
-  .action(transactionCommand);
+  .action(summaryCommand);
 
 program.action(() => {
   program.help();

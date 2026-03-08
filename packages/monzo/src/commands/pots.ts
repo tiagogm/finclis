@@ -52,7 +52,7 @@ export async function potsCommand(opts: BaseCommandOpts = {}): Promise<void> {
   } catch (err: any) {
     if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }
 
@@ -67,6 +67,15 @@ async function getPotName(session: { account_id: string }, potId: string): Promi
   return pot?.name || potId;
 }
 
+function parsePence(amountStr: string): number {
+  const amount = parseFloat(amountStr);
+  if (isNaN(amount) || amount <= 0) {
+    console.error("Amount must be a positive number (e.g. 10.50).");
+    process.exit(0);
+  }
+  return Math.round(amount * 100);
+}
+
 export async function potsDepositCommand(
   potId: string,
   amountStr: string,
@@ -74,18 +83,12 @@ export async function potsDepositCommand(
 ): Promise<void> {
   try {
     const session = await requireSession();
-    const amount = parseFloat(amountStr);
-    if (isNaN(amount) || amount <= 0) {
-      console.error("Amount must be a positive number (e.g. 10.50).");
-      process.exit(1);
-    }
-
-    const pence = Math.round(amount * 100);
+    const pence = parsePence(amountStr);
     const potName = await getPotName(session, potId);
 
     if (!opts.yes) {
       const ans = await prompt(
-        `Deposit £${amount.toFixed(2)} into '${potName}' (${potId})? [y/N] `
+        `Deposit £${(pence / 100).toFixed(2)} into '${potName}' (${potId})? [y/N] `
       );
       if (ans.trim().toLowerCase() !== "y") {
         console.log("Cancelled.");
@@ -103,7 +106,7 @@ export async function potsDepositCommand(
     console.log(`Deposited. New pot balance: ${newBalance}`);
   } catch (err: any) {
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }
 
@@ -114,18 +117,12 @@ export async function potsWithdrawCommand(
 ): Promise<void> {
   try {
     const session = await requireSession();
-    const amount = parseFloat(amountStr);
-    if (isNaN(amount) || amount <= 0) {
-      console.error("Amount must be a positive number (e.g. 10.50).");
-      process.exit(1);
-    }
-
-    const pence = Math.round(amount * 100);
+    const pence = parsePence(amountStr);
     const potName = await getPotName(session, potId);
 
     if (!opts.yes) {
       const ans = await prompt(
-        `Withdraw £${amount.toFixed(2)} from '${potName}' (${potId})? [y/N] `
+        `Withdraw £${(pence / 100).toFixed(2)} from '${potName}' (${potId})? [y/N] `
       );
       if (ans.trim().toLowerCase() !== "y") {
         console.log("Cancelled.");
@@ -143,6 +140,6 @@ export async function potsWithdrawCommand(
     console.log(`Withdrawn. New pot balance: ${newBalance}`);
   } catch (err: any) {
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }

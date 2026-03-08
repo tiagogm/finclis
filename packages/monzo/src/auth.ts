@@ -186,20 +186,37 @@ async function waitForCode(port: number, expectedState: string): Promise<string>
 }
 
 async function tryOpenBrowser(url: string): Promise<void> {
-  const { exec } = await import("node:child_process");
+  const { execFile } = await import("node:child_process");
   const cmds = process.platform === "darwin" ? ["open"] :
     process.platform === "win32" ? ["start"] : ["xdg-open", "sensible-browser"];
 
   for (const cmd of cmds) {
     try {
       await new Promise<void>((resolve, reject) => {
-        exec(`${cmd} "${url}"`, (err) => (err ? reject(err) : resolve()));
+        execFile(cmd, [url], (err) => (err ? reject(err) : resolve()));
       });
       return;
     } catch {
       // try next
     }
   }
+}
+
+export async function selectAccount<T extends { id: string; type: string; description: string }>(
+  accounts: T[],
+  currentAccountId?: string,
+): Promise<T> {
+  console.log(currentAccountId ? "Active accounts:" : `Found ${accounts.length} accounts:`);
+  accounts.forEach((a, i) => {
+    const current = currentAccountId && a.id === currentAccountId ? " (current)" : "";
+    console.log(`  [${i + 1}] ${a.description || a.type}  (${a.type})  — ${a.id}${current}`);
+  });
+  const input = await prompt(`Select account [1]: `);
+  const idx = input.trim() === "" ? 1 : parseInt(input.trim(), 10);
+  if (isNaN(idx) || idx < 1 || idx > accounts.length) {
+    throw new Error("Invalid selection");
+  }
+  return accounts[idx - 1];
 }
 
 export async function login(): Promise<void> {
@@ -320,16 +337,7 @@ export async function login(): Promise<void> {
   let selectedAccount = active[0];
 
   if (active.length > 1) {
-    console.log(`Found ${active.length} accounts:`);
-    active.forEach((a, i) => {
-      console.log(`  [${i + 1}] ${a.description || a.type}  (${a.type})  — ${a.id}`);
-    });
-    const input = await prompt(`Select account [1]: `);
-    const idx = input.trim() === "" ? 1 : parseInt(input.trim(), 10);
-    if (isNaN(idx) || idx < 1 || idx > active.length) {
-      throw new Error("Invalid selection");
-    }
-    selectedAccount = active[idx - 1];
+    selectedAccount = await selectAccount(active);
   }
 
   const session: MonzoSession = {

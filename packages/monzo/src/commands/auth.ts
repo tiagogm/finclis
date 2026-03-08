@@ -15,7 +15,7 @@ export async function authSetCommand(): Promise<void> {
 
   if (!clientId || !clientSecret) {
     console.error("Both client_id and client_secret are required.");
-    process.exit(1);
+    process.exit(0);
   }
 
   await saveCredentials({ client_id: clientId, client_secret: clientSecret });

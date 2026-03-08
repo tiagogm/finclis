@@ -12,11 +12,11 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-function monthLabel(month: number, year: number): string {
+export function monthLabel(month: number, year: number): string {
   return `${MONTHS[month - 1]} ${year}`;
 }
 
-function formatAmount(amount: number, currency: string): string {
+export function formatAmount(amount: number, currency: string): string {
   const abs = Math.abs(amount) / 100;
   const sign = amount < 0 ? "-" : "+";
   return `${sign}${currency} ${abs.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -48,7 +48,6 @@ function printTransactions(txs: any[]): void {
   console.log(
     `${"─".repeat(w.date)}  ${"─".repeat(w.amount)}  ${"─".repeat(w.category)}  ${"─".repeat(w.description)}`
   );
-
   for (const r of rows) {
     console.log(
       `${r.date.padEnd(w.date)}  ${r.amount.padEnd(w.amount)}  ${r.category.padEnd(w.category)}  ${r.description}`
@@ -58,11 +57,11 @@ function printTransactions(txs: any[]): void {
 
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
-function isOldRange(since: string): boolean {
+export function isOldRange(since: string): boolean {
   return Date.now() - new Date(since).getTime() > NINETY_DAYS_MS;
 }
 
-function loadCache(month: number, year: number): any[] | null {
+export function loadCache(month: number, year: number): any[] | null {
   const mm = String(month).padStart(2, "0");
   const file = path.join(CACHE_DIR, `transactions-${year}-${mm}.json`);
   try {
@@ -73,7 +72,7 @@ function loadCache(month: number, year: number): any[] | null {
   }
 }
 
-async function fetchTransactions(opts: {
+export async function fetchTransactions(opts: {
   accountId: string;
   since?: string;
   before?: string;
@@ -133,7 +132,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
         const parsed = parseMonth(opts.month);
         if (!parsed) {
           console.error(`Invalid month: "${opts.month}". Expected MM-YYYY.`);
-          process.exit(1);
+          process.exit(0);
         }
         const bounds = monthBounds(parsed.month, parsed.year);
         since = bounds.since;
@@ -148,7 +147,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
           console.error(
             `Data older than 90 days requires a cached sync. Run: monzo transactions --sync`
           );
-          process.exit(1);
+          process.exit(0);
         }
         writeJson(cached);
         return;
@@ -190,11 +189,11 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
         const parsed = parseMonth(opts.month);
         if (!parsed) {
           console.error(`Invalid month: "${opts.month}". Expected MM-YYYY (e.g. 03-2026).`);
-          process.exit(1);
+          process.exit(0);
         }
         if (parsed.year > nowYear || (parsed.year === nowYear && parsed.month > nowMonth)) {
           console.error(`Invalid month: "${opts.month}" is in the future.`);
-          process.exit(1);
+          process.exit(0);
         }
         currentMonth = parsed.month;
         currentYear = parsed.year;
@@ -219,7 +218,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
             console.error(
               `Data older than 90 days requires a cached sync. Run: monzo transactions --sync`
             );
-            process.exit(1);
+            process.exit(0);
           }
           console.log(`\nTransactions (${cached.length}) — ${monthLabel(currentMonth, currentYear)} [cached]\n`);
           printTransactions(cached);
@@ -307,7 +306,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
   } catch (err: any) {
     if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }
 

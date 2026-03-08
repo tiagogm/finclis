@@ -33,6 +33,6 @@ export async function whoamiCommand(opts: BaseCommandOpts = {}): Promise<void> {
   } catch (err: any) {
     if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }

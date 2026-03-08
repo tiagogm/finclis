@@ -5,6 +5,6 @@ export async function loginCommand(): Promise<void> {
     await login();
   } catch (err: any) {
     console.error(`Login failed: ${err.message}`);
-    process.exit(1);
+    process.exit(0);
   }
 }

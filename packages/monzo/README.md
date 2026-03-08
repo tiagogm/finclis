@@ -25,14 +25,18 @@ Requires [Bun](https://bun.sh) >= 1.2.21.
 
 ### Auth
 ```
-monzo login [--sync] [--from YYYY-MM-DD]   Authenticate via OAuth2
+monzo auth view                             Show stored credentials
+monzo auth set                              Set client_id and client_secret
+monzo auth clear                            Remove stored credentials
+monzo login [-v]                            Authenticate via OAuth2
 monzo logout                                Revoke token and clear session
 ```
 
 ### Account info
 ```
 monzo whoami [--json] [-v]                  Show authenticated user
-monzo accounts [--json] [-v]                List all accounts
+monzo accounts list [--json] [-v]           List all accounts
+monzo accounts set [accountId] [-v]         Switch active account
 monzo balance [--json] [-v]                 Show account balance
 ```
 
@@ -46,8 +50,8 @@ monzo pots withdraw <potId> <amount> [--yes] Withdraw from a pot
 ### Transactions
 ```
 monzo transactions [--month MM-YYYY] [--from YYYY-MM-DD] [--to YYYY-MM-DD]
-                   [--limit N] [--json] [-v]
-monzo transaction <id> [--json] [-v]        Show single transaction
+                   [--limit N] [--sync] [--json] [-v]
+monzo summary [--month MM-YYYY] [--json] [-v]  Monthly category breakdown
 ```
 
 ### Flags
@@ -60,8 +64,8 @@ monzo transaction <id> [--json] [-v]        Show single transaction
 Monzo restricts API access to the last 90 days. To access older data, sync after login:
 
 ```bash
-monzo login --sync                    # sync last 12 months
-monzo login --sync --from 2024-01-01  # sync from specific date
+monzo transactions --sync                    # sync last 12 months
+monzo transactions --sync --from 2024-01-01  # sync from specific date
 ```
 
 Synced data is cached at `~/.monzo-cli/cache/` and used automatically for older date ranges.

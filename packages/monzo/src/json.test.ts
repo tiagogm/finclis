@@ -15,7 +15,7 @@ describe("writeJson", () => {
       return true;
     }) as any;
 
-    const { writeJson } = await import("./json.js");
+    const { writeJson } = await import("@finclis/cli-utils");
     writeJson({ foo: "bar", num: 42 });
 
     expect(output).toBe('{"foo":"bar","num":42}\n');

@@ -1,9 +1,9 @@
 import crypto from "node:crypto";
 import { monzoGet, monzoPut, requireSession } from "../client.js";
-import { prompt } from "../auth.js";
+import { prompt } from "@finclis/cli-utils";
 import { formatMoney } from "../format.js";
-import { writeJson, handleJsonError } from "../json.js";
-import type { BaseCommandOpts } from "../json.js";
+import { writeJson, handleJsonError } from "@finclis/cli-utils";
+import type { BaseCommandOpts } from "@finclis/cli-utils";
 
 export async function potsCommand(opts: BaseCommandOpts = {}): Promise<void> {
   try {

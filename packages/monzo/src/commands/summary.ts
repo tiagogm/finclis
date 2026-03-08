@@ -1,7 +1,7 @@
 import { requireSession } from "../client.js";
 import { parseMonth, monthBounds } from "../validate.js";
-import { writeJson, handleJsonError } from "../json.js";
-import type { BaseCommandOpts } from "../json.js";
+import { writeJson, handleJsonError } from "@finclis/cli-utils";
+import type { BaseCommandOpts } from "@finclis/cli-utils";
 import {
   monthLabel,
   formatAmount,
@@ -31,7 +31,7 @@ export async function summaryCommand(opts: SummaryOpts = {}): Promise<void> {
     if (opts.month) {
       const parsed = parseMonth(opts.month);
       if (!parsed) {
-        console.error(`Invalid month: "${opts.month}". Expected MM-YYYY.`);
+        console.error(`Invalid month: "${opts.month}". Expected YYYY-MM.`);
         process.exit(0);
       }
       if (parsed.year > year || (parsed.year === year && parsed.month > month)) {

@@ -4,11 +4,14 @@ export interface BaseCommandOpts {
 }
 
 export function writeJson(data: unknown): void {
-  process.stdout.write(JSON.stringify(data));
+  process.stdout.write(JSON.stringify(data) + "\n");
 }
 
 export function handleJsonError(err: any): never {
-  const isAuth = err.message?.includes("401") || err.message?.includes("Session expired");
+  const isAuth =
+    err.message?.includes("401") ||
+    err.message?.includes("Session expired") ||
+    err.message?.includes("Not logged in");
   writeJson({
     error: isAuth ? "auth" : "unknown",
     message: err.message,

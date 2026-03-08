@@ -1,4 +1,5 @@
 import { loadSession, refreshSession, MonzoSession, API_URL } from "./auth.js";
+import { parseApiError } from "@finclis/cli-utils";
 
 let verbose = false;
 
@@ -6,21 +7,6 @@ export function setVerbose(enabled: boolean): void {
   verbose = enabled;
 }
 
-async function apiError(res: Response): Promise<Error> {
-  let message = `API error ${res.status}`;
-  try {
-    const body = await res.json();
-    if (verbose) console.error(`<- body: ${JSON.stringify(body)}`);
-    if (body.message) {
-      message += `: ${body.message}`;
-    } else if (body.error) {
-      message += `: ${body.error}`;
-    }
-  } catch {
-    // not JSON
-  }
-  return new Error(message);
-}
 
 export async function requireSession(): Promise<MonzoSession> {
   const session = await loadSession();
@@ -72,7 +58,7 @@ async function monzoFetch(path: string, opts: FetchOpts): Promise<any> {
     if (verbose) console.error(`<- ${res.status}`);
   }
 
-  if (!res.ok) throw await apiError(res);
+  if (!res.ok) throw await parseApiError(res, verbose);
 
   const json = await res.json();
   if (verbose) console.error(`<- body: ${JSON.stringify(json).slice(0, 2000)}`);

@@ -50,9 +50,9 @@ export interface LloydsCliSession {
   lastAccessedAt?: number;
 }
 
-export function loadSession(): LloydsCliSession | null {
+export function loadSession(sessionPath = SESSION_PATH): LloydsCliSession | null {
   try {
-    const raw = fs.readFileSync(SESSION_PATH, "utf-8");
+    const raw = fs.readFileSync(sessionPath, "utf-8");
     const parsed = JSON.parse(raw);
     if (
       !parsed?.arrangementId ||
@@ -67,33 +67,34 @@ export function loadSession(): LloydsCliSession | null {
   }
 }
 
-export function saveSession(session: LloydsCliSession): void {
-  fs.mkdirSync(SESSION_DIR, { recursive: true, mode: 0o700 });
-  fs.writeFileSync(SESSION_PATH, JSON.stringify(session, null, 2), {
+export function saveSession(session: LloydsCliSession, sessionPath = SESSION_PATH): void {
+  const dir = path.dirname(sessionPath);
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2), {
     mode: 0o600,
   });
 }
 
 let _lastTouch = 0;
 
-export function touchSession(): void {
+export function touchSession(sessionPath = SESSION_PATH): void {
   const now = Date.now();
   if (now - _lastTouch < 30_000) return; // at most one write per 30s
   _lastTouch = now;
   try {
-    const session = loadSession();
+    const session = loadSession(sessionPath);
     if (session) {
       session.lastAccessedAt = now;
-      saveSession(session);
+      saveSession(session, sessionPath);
     }
   } catch {
     // best-effort — never block a command on this
   }
 }
 
-export function clearSession(): void {
+export function clearSession(sessionPath = SESSION_PATH): void {
   try {
-    fs.unlinkSync(SESSION_PATH);
+    fs.unlinkSync(sessionPath);
   } catch {
     // file doesn't exist, that's fine
   }

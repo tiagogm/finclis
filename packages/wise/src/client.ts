@@ -1,5 +1,6 @@
 import { API_URL, BASE_URL, loadSession, Session } from "./auth.js";
 import { isScaChallenge, handleScaChallenge } from "./sca.js";
+import { parseApiError } from "@finclis/cli-utils";
 
 let verbose = false;
 
@@ -7,30 +8,6 @@ export function setVerbose(enabled: boolean): void {
   verbose = enabled;
 }
 
-/**
- * Extract a human-readable error message from an API response.
- * Avoids dumping raw response bodies that may contain tokens or PII.
- */
-async function apiError(res: Response): Promise<Error> {
-  let message = `API error ${res.status}`;
-  try {
-    const body = await res.json();
-    if (verbose) console.error(`<- body: ${JSON.stringify(body)}`);
-    if (body.errors?.length) {
-      const msgs = body.errors.map((e: any) => e.message || e.code || JSON.stringify(e));
-      message += `: ${msgs.join("; ")}`;
-    } else if (body.message) {
-      message += `: ${body.message}`;
-    } else if (body.error) {
-      message += `: ${body.error}`;
-    } else if (body.title) {
-      message += `: ${body.title}`;
-    }
-  } catch {
-    // Not JSON — just use status code
-  }
-  return new Error(message);
-}
 
 /**
  * Load session or exit with an error.
@@ -77,7 +54,7 @@ export async function wiseGet(path: string): Promise<any> {
   }
 
   if (!res.ok) {
-    throw await apiError(res);
+    throw await parseApiError(res, verbose);
   }
 
   const json = await res.json();
@@ -108,7 +85,7 @@ export async function wiseGatewayGet(path: string): Promise<any> {
   if (verbose) console.error(`<- ${res.status}`);
 
   if (!res.ok) {
-    throw await apiError(res);
+    throw await parseApiError(res, verbose);
   }
 
   return res.json();
@@ -159,7 +136,7 @@ export async function wisePost(
   }
 
   if (!res.ok) {
-    throw await apiError(res);
+    throw await parseApiError(res, verbose);
   }
 
   return res.json();
@@ -193,7 +170,7 @@ export async function wisePut(path: string): Promise<any> {
   }
 
   if (!res.ok) {
-    throw await apiError(res);
+    throw await parseApiError(res, verbose);
   }
 
   return res.json();

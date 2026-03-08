@@ -1,7 +1,7 @@
 import { requireSession } from "../client.js";
 import { parseMonth, monthBounds } from "../validate.js";
-import { writeJson, handleJsonError } from "../json.js";
-import type { BaseCommandOpts } from "../json.js";
+import { writeJson, handleJsonError } from "@finclis/cli-utils";
+import type { BaseCommandOpts } from "@finclis/cli-utils";
 import {
   monthLabel,
   formatAmount,

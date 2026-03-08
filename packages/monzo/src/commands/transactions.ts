@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { monzoGet, requireSession } from "../client.js";
-import { prompt } from "../auth.js";
+import { prompt } from "@finclis/cli-utils";
 import { CACHE_DIR, type MonzoSession } from "../auth.js";
 import { parseMonth, monthBounds, parseDateValue } from "../validate.js";
-import { writeJson, handleJsonError } from "../json.js";
-import type { BaseCommandOpts } from "../json.js";
+import { writeJson, handleJsonError } from "@finclis/cli-utils";
+import type { BaseCommandOpts } from "@finclis/cli-utils";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",

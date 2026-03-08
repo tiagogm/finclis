@@ -1,4 +1,5 @@
-import { loadCredentials, saveCredentials, clearCredentials, prompt } from "../auth.js";
+import { loadCredentials, saveCredentials, clearCredentials } from "../auth.js";
+import { prompt } from "@finclis/cli-utils";
 
 export async function authViewCommand(): Promise<void> {
   const creds = await loadCredentials();

@@ -1,4 +1,5 @@
-import { prompt, saveConfig, loadConfig, clearConfig, baseUrl, type Env } from "../auth.js";
+import { saveConfig, loadConfig, clearConfig, baseUrl, type Env } from "../auth.js";
+import { prompt } from "@finclis/cli-utils";
 
 export async function authSetCommand(): Promise<void> {
   const apiKey = await prompt("API key: ", true);

@@ -36,7 +36,8 @@ export TRADING212_ENV=live   # optional, defaults to live
 | `trading212 orders` | Pending orders |
 | `trading212 history orders` | Historical filled/cancelled orders |
 | `trading212 history dividends` | Dividend payment history |
-| `trading212 history export` | Cash-flow summary via CSV export (~15–30s) |
+| `trading212 history export` | Monthly cash-flow summary via CSV export (~15–30s) |
+| `trading212 summary` | Alias of `history export` |
 | `trading212 instruments` | Tradable instruments (filterable) |
 
 All data commands accept `--json` to output raw JSON and `-v` / `--verbose` to log HTTP requests.
@@ -52,6 +53,7 @@ trading212 cash --json
 trading212 history dividends --json | jq '.[] | .amount'
 trading212 history export --month 02-2025
 trading212 history export --year 2024 --json
+trading212 summary --year 2024 --json   # same as history export
 ```
 
 ## Development

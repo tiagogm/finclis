@@ -7,6 +7,7 @@ import { positionsCommand } from "./commands/positions.js";
 import { ordersCommand } from "./commands/orders.js";
 import { registerHistoryCommand } from "./commands/history.js";
 import { instrumentsCommand } from "./commands/instruments.js";
+import { summaryCommand } from "./commands/summary.js";
 import { setVerbose } from "./client.js";
 
 const program = new Command();
@@ -77,6 +78,18 @@ program
 
 // History sub-commands (orders, dividends — transactions require CSV export, not available via REST)
 registerHistoryCommand(program);
+
+// Summary (alias of history export)
+program
+  .command("summary")
+  .description("Alias of `history export` — monthly cash-flow via CSV export (~15–30s)")
+  .option("--month <MM-YYYY>", "Specific month (default: current)")
+  .option("--year <YYYY>", "Full year table")
+  .option("--from <date>", "Start date (YYYY-MM-DD)")
+  .option("--to <date>", "End date (YYYY-MM-DD)")
+  .option("--json", "Output raw JSON")
+  .option("-v, --verbose", "Log HTTP requests")
+  .action(summaryCommand);
 
 // Instruments
 program

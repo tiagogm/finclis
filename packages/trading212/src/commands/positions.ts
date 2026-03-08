@@ -24,7 +24,6 @@ export async function positionsCommand(opts: BaseCommandOpts = {}): Promise<void
     console.log("-".repeat(72));
     for (const p of positions) {
       const ppl = p.ppl ?? 0;
-      const pct = p.fxPpl !== undefined ? "" : "";
       const ret = p.averagePrice && p.currentPrice
         ? ((p.currentPrice - p.averagePrice) / p.averagePrice) * 100
         : 0;

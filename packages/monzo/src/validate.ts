@@ -1,16 +1,30 @@
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_RE = /^\d{2}-\d{2}-\d{4}$/;
 
 export function validateDate(value: string): string {
   if (!DATE_RE.test(value)) {
-    console.error(`Invalid date: "${value}". Expected YYYY-MM-DD.`);
-    process.exit(1);
+    console.error(`Invalid date: "${value}". Expected DD-MM-YYYY.`);
+    process.exit(0);
   }
-  const d = new Date(value);
+  const d = parseDateValue(value);
   if (isNaN(d.getTime())) {
     console.error(`Invalid date: "${value}".`);
-    process.exit(1);
+    process.exit(0);
   }
   return value;
+}
+
+export function parseDateValue(value: string): Date {
+  if (!DATE_RE.test(value)) {
+    console.error(`Invalid date: "${value}". Expected DD-MM-YYYY.`);
+    process.exit(0);
+  }
+  const [dd, mm, yyyy] = value.split("-");
+  const d = new Date(Date.UTC(parseInt(yyyy, 10), parseInt(mm, 10) - 1, parseInt(dd, 10)));
+  if (isNaN(d.getTime())) {
+    console.error(`Invalid date: "${value}".`);
+    process.exit(0);
+  }
+  return d;
 }
 
 const MONTH_RE = /^(\d{1,2})-(\d{4})$/;

@@ -49,8 +49,8 @@ monzo pots withdraw <potId> <amount> [--yes] Withdraw from a pot
 
 ### Transactions
 ```
-monzo transactions [--month MM-YYYY] [--from YYYY-MM-DD] [--to YYYY-MM-DD]
-                   [--limit N] [--sync] [--json] [-v]
+monzo transactions [--month MM-YYYY] [--from DD-MM-YYYY] [--to DD-MM-YYYY]
+                   [--limit N] [--cache] [--json] [-v]
 monzo summary [--month MM-YYYY] [--json] [-v]  Monthly category breakdown
 ```
 
@@ -59,16 +59,16 @@ monzo summary [--month MM-YYYY] [--json] [-v]  Monthly category breakdown
 - `-v, --verbose` — log HTTP requests to stderr
 - `--yes` — skip confirmation prompts (write commands)
 
-## Transaction sync
+## Transaction cache
 
-Monzo restricts API access to the last 90 days. To access older data, sync after login:
+Monzo restricts API access to the last 90 days. To access older data, cache after login:
 
 ```bash
-monzo transactions --sync                    # sync last 12 months
-monzo transactions --sync --from 2024-01-01  # sync from specific date
+monzo transactions --cache                    # cache last 12 months
+monzo transactions --cache --from 01-01-2024  # cache from specific date
 ```
 
-Synced data is cached at `~/.monzo-cli/cache/` and used automatically for older date ranges.
+Cached data is stored at `~/.monzo-cli/cache/` and used automatically for older date ranges.
 
 ## Session storage
 

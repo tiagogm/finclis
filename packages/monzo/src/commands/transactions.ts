@@ -3,7 +3,7 @@ import path from "node:path";
 import { monzoGet, requireSession } from "../client.js";
 import { prompt } from "../auth.js";
 import { CACHE_DIR, type MonzoSession } from "../auth.js";
-import { parseMonth, monthBounds, validateDate } from "../validate.js";
+import { parseMonth, monthBounds, parseDateValue } from "../validate.js";
 import { writeJson, handleJsonError } from "../json.js";
 import type { BaseCommandOpts } from "../json.js";
 
@@ -98,23 +98,20 @@ interface TransactionsOpts extends BaseCommandOpts {
   to?: string;
   month?: string;
   limit?: string;
-  sync?: boolean;
+  cache?: boolean;
 }
 
 export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<void> {
   try {
     const session = await requireSession();
 
-    if (opts.sync) {
+    if (opts.cache) {
       const fromDate = opts.from
-        ? new Date(validateDate(opts.from))
+        ? parseDateValue(opts.from)
         : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
       await syncTransactions(session, fromDate);
       return;
     }
-
-    if (opts.from) validateDate(opts.from);
-    if (opts.to) validateDate(opts.to);
 
     const now = new Date();
     const nowMonth = now.getMonth() + 1;
@@ -126,8 +123,8 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
       let before: string | undefined;
 
       if (opts.from || opts.to) {
-        since = opts.from ? new Date(opts.from).toISOString() : undefined;
-        before = opts.to ? new Date(opts.to + "T23:59:59.999Z").toISOString() : undefined;
+        since = opts.from ? parseDateValue(opts.from).toISOString() : undefined;
+        before = opts.to ? (() => { const d = parseDateValue(opts.to!); d.setUTCHours(23, 59, 59, 999); return d.toISOString(); })() : undefined;
       } else if (opts.month) {
         const parsed = parseMonth(opts.month);
         if (!parsed) {
@@ -145,7 +142,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
         const cached = loadCache(parsed.month, parsed.year);
         if (!cached) {
           console.error(
-            `Data older than 90 days requires a cached sync. Run: monzo transactions --sync`
+            `Data older than 90 days requires a cached sync. Run: monzo transactions --cache`
           );
           process.exit(0);
         }
@@ -216,7 +213,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
           const cached = loadCache(currentMonth, currentYear);
           if (!cached) {
             console.error(
-              `Data older than 90 days requires a cached sync. Run: monzo transactions --sync`
+              `Data older than 90 days requires a cached sync. Run: monzo transactions --cache`
             );
             process.exit(0);
           }
@@ -235,8 +232,8 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
           lastId = txs.length > 0 && txs.length >= pageSize ? txs[txs.length - 1].id : undefined;
         }
       } else if (opts.from || opts.to) {
-        since = opts.from ? new Date(opts.from).toISOString() : undefined;
-        before = opts.to ? new Date(opts.to + "T23:59:59.999Z").toISOString() : undefined;
+        since = opts.from ? parseDateValue(opts.from).toISOString() : undefined;
+        before = opts.to ? (() => { const d = parseDateValue(opts.to!); d.setUTCHours(23, 59, 59, 999); return d.toISOString(); })() : undefined;
         const txs = await fetchTransactions({
           accountId: session.account_id,
           since,

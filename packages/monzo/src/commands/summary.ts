@@ -49,7 +49,7 @@ export async function summaryCommand(opts: SummaryOpts = {}): Promise<void> {
       const cached = loadCache(month, year);
       if (!cached) {
         console.error(
-          `Data older than 90 days requires a cached sync. Run: monzo transactions --sync`
+          `Data older than 90 days requires a cached sync. Run: monzo transactions --cache`
         );
         process.exit(0);
       }

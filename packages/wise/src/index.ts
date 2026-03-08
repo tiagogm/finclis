@@ -74,20 +74,22 @@ program
   .option("--status <status>", "Filter by status (COMPLETED, IN_PROGRESS, etc.)")
   .option("--type <type>", "Filter by activity type (TRANSFER, CARD_PAYMENT, etc.)")
   .option("--size <n>", "Page size (default 10, max 100)")
-  .option("--from <date>", "Start date YYYY-MM-DD (with --json)")
-  .option("--to <date>", "End date YYYY-MM-DD (with --json)")
+  .option("--from <YYYY-MM-DD>", "Start date (with --json)")
+  .option("--to <YYYY-MM-DD>", "End date (with --json)")
   .option("--json", "Output raw JSON (auto-paginates all results)")
   .option("-v, --verbose", "Log HTTP requests")
+  .addHelpText("after", "\nExamples:\n  wise activities\n  wise activities --month 03-2026\n  wise activities --type TRANSFER --json\n  wise activities --from 2026-01-01 --to 2026-01-31 --json")
   .action(activitiesCommand);
 
 program
   .command("statements")
   .description("Get account statement for a currency")
-  .requiredOption("--currency <code>", "Currency code (e.g. GBP)")
-  .requiredOption("--from <date>", "Start date (YYYY-MM-DD)")
-  .requiredOption("--to <date>", "End date (YYYY-MM-DD)")
+  .requiredOption("--currency <code>", "Currency code (e.g. GBP, EUR, USD)")
+  .requiredOption("--from <YYYY-MM-DD>", "Start date")
+  .requiredOption("--to <YYYY-MM-DD>", "End date")
   .option("-v, --verbose", "Log HTTP requests")
   .option("--json", "Output raw JSON")
+  .addHelpText("after", "\nExamples:\n  wise statements --currency GBP --from 2026-01-01 --to 2026-01-31\n  wise statements --currency EUR --from 2026-01-01 --to 2026-03-31 --json")
   .action(statementsCommand);
 
 // People
@@ -109,6 +111,7 @@ program
   .description("Get live exchange rate (e.g. wise rates EUR GBP)")
   .option("-v, --verbose", "Log HTTP requests")
   .option("--json", "Output raw JSON")
+  .addHelpText("after", "\nExamples:\n  wise rates EUR GBP\n  wise rates USD EUR --json")
   .action(ratesCommand);
 
 program
@@ -128,12 +131,13 @@ program
 program
   .command("move")
   .description("Convert between currencies or move between balances")
-  .requiredOption("--from <currency>", "Source currency")
-  .requiredOption("--to <currency>", "Target currency")
-  .requiredOption("--amount <amount>", "Amount to move/convert")
+  .requiredOption("--from <currency>", "Source currency (e.g. EUR)")
+  .requiredOption("--to <currency>", "Target currency (e.g. GBP)")
+  .requiredOption("--amount <amount>", "Amount in source currency")
   .option("--source-balance <id>", "Source balance ID (for same-currency moves)")
   .option("--target-balance <id>", "Target balance ID (for same-currency moves)")
   .option("-v, --verbose", "Log HTTP requests")
+  .addHelpText("after", "\nExamples:\n  wise move --from EUR --to GBP --amount 100\n  wise move --from GBP --to GBP --amount 50 --source-balance <id> --target-balance <id>")
   .action(moveCommand);
 
 program
@@ -145,6 +149,7 @@ program
   .option("--reference <text>", "Payment reference text")
   .option("-v, --verbose", "Log HTTP requests")
   .option("--yes", "Skip confirmation prompt")
+  .addHelpText("after", "\nExamples:\n  wise send 100 GBP\n  wise send 50 EUR --to <recipientId> --reference 'Rent' --yes")
   .action(sendCommand);
 
 program.action(() => {

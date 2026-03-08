@@ -1,0 +1,30 @@
+{
+  "name": "lloyds-cli",
+  "version": "0.1.0",
+  "description": "Unofficial CLI for Lloyds Bank UK",
+  "author": "Tiago Morais",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "bin": {
+    "lloyds": "./lloyds"
+  },
+  "scripts": {
+    "lloyds": "bun ./lloyds",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "compile": "bun build --compile --target=bun-darwin-arm64 --external chromium-bidi --external electron src/index.ts --outfile dist/lloyds-darwin-arm64"
+  },
+  "dependencies": {
+    "@finclis/cli-utils": "workspace:*",
+    "commander": "^12.0.0",
+    "playwright": "^1.58.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "bun-types": "^1.3.9",
+    "typescript": "^5.0.0"
+  }
+}

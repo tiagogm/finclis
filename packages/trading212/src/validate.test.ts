@@ -3,20 +3,20 @@ import { parseMonth, parseYear, monthBounds, yearBounds, formatAmount } from "./
 import { baseUrl } from "./auth.js";
 
 describe("parseMonth", () => {
-  test("parses valid MM-YYYY", () => {
-    expect(parseMonth("03-2025")).toEqual({ month: 3, year: 2025 });
+  test("parses valid YYYY-MM", () => {
+    expect(parseMonth("2025-03")).toEqual({ month: 3, year: 2025 });
   });
   test("parses single-digit month", () => {
-    expect(parseMonth("1-2024")).toEqual({ month: 1, year: 2024 });
+    expect(parseMonth("2024-1")).toEqual({ month: 1, year: 2024 });
   });
   test("returns null for invalid format", () => {
-    expect(parseMonth("2025-03")).toBeNull();
+    expect(parseMonth("03-2025")).toBeNull();
   });
   test("returns null for month 0", () => {
-    expect(parseMonth("0-2025")).toBeNull();
+    expect(parseMonth("2025-0")).toBeNull();
   });
   test("returns null for month 13", () => {
-    expect(parseMonth("13-2025")).toBeNull();
+    expect(parseMonth("2025-13")).toBeNull();
   });
   test("returns null for empty string", () => {
     expect(parseMonth("")).toBeNull();

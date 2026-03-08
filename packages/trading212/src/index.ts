@@ -83,13 +83,13 @@ registerHistoryCommand(program);
 program
   .command("summary")
   .description("Alias of `history export` — monthly cash-flow via CSV export (~15–30s)")
-  .option("--month <MM-YYYY>", "Specific month (default: current)")
+  .option("--month <YYYY-MM>", "Specific month (default: current)")
   .option("--year <YYYY>", "Full year table")
   .option("--from <YYYY-MM-DD>", "Start date")
   .option("--to <YYYY-MM-DD>", "End date")
   .option("--json", "Output raw JSON")
   .option("-v, --verbose", "Log HTTP requests")
-  .addHelpText("after", "\nExamples:\n  trading212 summary\n  trading212 summary --month 03-2026\n  trading212 summary --year 2025\n  trading212 summary --from 2026-01-01 --to 2026-03-31 --json")
+  .addHelpText("after", "\nExamples:\n  trading212 summary\n  trading212 summary --month 2026-03\n  trading212 summary --year 2025\n  trading212 summary --from 2026-01-01 --to 2026-03-31 --json")
   .action(summaryCommand);
 
 // Instruments

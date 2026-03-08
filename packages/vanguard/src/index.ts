@@ -68,13 +68,13 @@ program
 program
   .command("summary")
   .description("Monthly investment summary")
-  .option("--month <MM-YYYY>", "Specific month (default: current month)")
+  .option("--month <YYYY-MM>", "Specific month (default: current month)")
   .option("--year <YYYY>", "Full year summary table")
   .option("--from <YYYY-MM-DD>", "Start date")
   .option("--to <YYYY-MM-DD>", "End date")
   .option("-v, --verbose", "Log HTTP requests")
   .option("--json", "Output raw JSON")
-  .addHelpText("after", "\nExamples:\n  vanguard summary\n  vanguard summary --month 03-2026\n  vanguard summary --year 2025\n  vanguard summary --from 2026-01-01 --to 2026-03-31 --json")
+  .addHelpText("after", "\nExamples:\n  vanguard summary\n  vanguard summary --month 2026-03\n  vanguard summary --year 2025\n  vanguard summary --from 2026-01-01 --to 2026-03-31 --json")
   .action(summaryCommand);
 
 program.action(() => {

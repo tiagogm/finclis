@@ -70,7 +70,7 @@ program
 program
   .command("activities")
   .description("Browse account activities")
-  .option("--month [MM-YYYY]", "Month view (current month if no value)")
+  .option("--month [YYYY-MM]", "Month view (current month if no value)")
   .option("--status <status>", "Filter by status (COMPLETED, IN_PROGRESS, etc.)")
   .option("--type <type>", "Filter by activity type (TRANSFER, CARD_PAYMENT, etc.)")
   .option("--size <n>", "Page size (default 10, max 100)")
@@ -78,7 +78,7 @@ program
   .option("--to <YYYY-MM-DD>", "End date (with --json)")
   .option("--json", "Output raw JSON (auto-paginates all results)")
   .option("-v, --verbose", "Log HTTP requests")
-  .addHelpText("after", "\nExamples:\n  wise activities\n  wise activities --month 03-2026\n  wise activities --type TRANSFER --json\n  wise activities --from 2026-01-01 --to 2026-01-31 --json")
+  .addHelpText("after", "\nExamples:\n  wise activities\n  wise activities --month 2026-03\n  wise activities --type TRANSFER --json\n  wise activities --from 2026-01-01 --to 2026-01-31 --json")
   .action(activitiesCommand);
 
 program

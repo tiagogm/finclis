@@ -32,13 +32,13 @@ export function validateBalanceId(value: string): number {
   return id;
 }
 
-const MONTH_RE = /^(\d{1,2})-(\d{4})$/;
+const MONTH_RE = /^(\d{4})-(\d{1,2})$/;
 
 export function parseMonth(value: string): { month: number; year: number } | null {
   const m = MONTH_RE.exec(value);
   if (!m) return null;
-  const month = parseInt(m[1], 10);
-  const year = parseInt(m[2], 10);
+  const year = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
   if (month < 1 || month > 12) return null;
   return { month, year };
 }

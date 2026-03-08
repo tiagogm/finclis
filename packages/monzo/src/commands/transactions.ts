@@ -128,7 +128,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
       } else if (opts.month) {
         const parsed = parseMonth(opts.month);
         if (!parsed) {
-          console.error(`Invalid month: "${opts.month}". Expected MM-YYYY.`);
+          console.error(`Invalid month: "${opts.month}". Expected YYYY-MM.`);
           process.exit(0);
         }
         const bounds = monthBounds(parsed.month, parsed.year);
@@ -185,7 +185,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
       } else {
         const parsed = parseMonth(opts.month);
         if (!parsed) {
-          console.error(`Invalid month: "${opts.month}". Expected MM-YYYY (e.g. 03-2026).`);
+          console.error(`Invalid month: "${opts.month}". Expected YYYY-MM (e.g. 2026-03).`);
           process.exit(0);
         }
         if (parsed.year > nowYear || (parsed.year === nowYear && parsed.month > nowMonth)) {

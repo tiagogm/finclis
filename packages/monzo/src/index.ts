@@ -110,23 +110,23 @@ pots
 program
   .command("transactions")
   .description("Browse transactions")
-  .option("--from <DD-MM-YYYY>", "Start date")
-  .option("--to <DD-MM-YYYY>", "End date")
-  .option("--month <MM-YYYY>", "Month view (e.g. 03-2026)")
+  .option("--from <YYYY-MM-DD>", "Start date")
+  .option("--to <YYYY-MM-DD>", "End date")
+  .option("--month <YYYY-MM>", "Month view (e.g. 2026-03)")
   .option("--limit <n>", "Page size (default 20)")
   .option("--cache", "Cache transactions locally (use --from to set start date)")
   .option("--json", "Output raw JSON (auto-paginates)")
   .option("-v, --verbose", "Log HTTP requests")
-  .addHelpText("after", "\nExamples:\n  monzo transactions\n  monzo transactions --month 03-2026\n  monzo transactions --from 01-01-2026 --to 31-01-2026\n  monzo transactions --json | jq '.[] | .description'\n  monzo transactions --cache --from 01-01-2025")
+  .addHelpText("after", "\nExamples:\n  monzo transactions\n  monzo transactions --month 2026-03\n  monzo transactions --from 2026-01-01 --to 2026-01-31\n  monzo transactions --json | jq '.[] | .description'\n  monzo transactions --cache --from 2025-01-01")
   .action(transactionsCommand);
 
 program
   .command("summary")
   .description("Monthly spending breakdown by category")
-  .option("--month <MM-YYYY>", "Month to summarise (default: current)")
+  .option("--month <YYYY-MM>", "Month to summarise (default: current)")
   .option("--json", "Output raw JSON")
   .option("-v, --verbose", "Log HTTP requests")
-  .addHelpText("after", "\nExamples:\n  monzo summary\n  monzo summary --month 03-2026\n  monzo summary --json")
+  .addHelpText("after", "\nExamples:\n  monzo summary\n  monzo summary --month 2026-03\n  monzo summary --json")
   .action(summaryCommand);
 
 program.action(() => {

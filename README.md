@@ -4,12 +4,16 @@ Unofficial CLIs for financial services. Each package is independently compiled a
 
 ## Packages
 
-| Package | Command | Description |
-|---|---|---|
-| [wise-cli](packages/wise/README.md) | `wise` | Unofficial CLI for Wise (TransferWise) |
-| [vanguard-cli](packages/vanguard/README.md) | `vanguard` | Unofficial CLI for Vanguard Investor UK |
+| Package | Command | Description | Auth |
+|---|---|---|---|
+| [monzo-cli](packages/monzo/README.md) | `monzo` | Unofficial CLI for Monzo | OAuth2 |
+| [trading212-cli](packages/trading212/README.md) | `trading212` | Unofficial CLI for Trading212 | API key |
+| [wise-cli](packages/wise/README.md) | `wise` | Unofficial CLI for Wise (TransferWise) | Browser |
+| [vanguard-cli](packages/vanguard/README.md) | `vanguard` | Unofficial CLI for Vanguard Investor UK | Browser |
 
 ## Installation
+
+### From source
 
 Requires [Bun](https://bun.sh).
 
@@ -19,27 +23,70 @@ cd finclis
 bun install
 ```
 
+### Prebuilt binaries
+
+Standalone binaries (no Bun required) are published for each release on [GitHub Releases](https://github.com/tiagogm/finclis/releases). Download the binary for your platform and put it on your `PATH`.
+
 See each package README for usage.
 
-## Architecture
+## Authorization
 
-Each CLI is a standalone TypeScript package built on [Bun](https://bun.sh) and [Playwright](https://playwright.dev).
+| Method | How it works | Credentials stored |
+|---|---|---|
+| OAuth2 | Run `auth set` to store client credentials, then `login` to complete the OAuth2 flow in the browser and fetch an access token | OS keychain via `Bun.secrets` |
+| API key | Run `auth set` to enter your API key; key is stored immediately — no login step needed | OS keychain via `Bun.secrets` |
+| Browser | Run `login` — Chromium opens the service login page; email, password, and 2FA are completed directly in the CLI-controlled browser window. Session cookies are saved locally and reused for all subsequent requests | `~/.<cli>-cli/session.json` |
 
-### Authorization
+## Keychain credentials
 
-All CLIs use the same browser-based auth pattern:
+OAuth2 and API key CLIs store credentials in the OS keychain via `Bun.secrets`, namespaced per service. Nothing is written to disk in plaintext.
 
-1. **Login** — Chromium opens the service's login page. The user completes the normal flow (email, password, 2FA) in the browser window. Automation-detection flags are disabled and a persistent browser profile is reused across logins so device trust and captcha cookies carry over between sessions.
+```bash
+<cli> auth view   # show stored credentials
+<cli> auth clear  # remove credentials from keychain
+<cli> logout      # (OAuth2 + Browser) revoke token server-side + clear local session
+```
 
-2. **Token extraction** — Once the browser lands on the post-login dashboard, the CLI extracts whatever credentials the service exposes (Bearer tokens, cookies, XSRF tokens, account identifiers).
+## Browser sessions
 
-3. **Session file** — Credentials are written to `~/.<cli-name>/session.json` (mode `0600`, directory mode `0700`). The file includes a `createdAt` timestamp and configurable TTL (default 60 minutes). Expired sessions are rejected on load.
+Browser CLIs save session state to `~/.<cli>-cli/session.json` (mode `0600`) after login. The file holds the token or cookies needed to make authenticated requests without re-opening the browser.
 
-4. **API requests** — Commands read the session file and call the service APIs directly — no browser involved at runtime.
+Sessions have two expiry mechanisms:
 
-5. **Step-up auth** — Some write operations trigger a secondary authentication challenge from the service (e.g. SMS, password, PIN). The CLI handles these interactively in the terminal.
+- **TTL** — a local timeout (default 60 min, override with `--ttl <minutes>` on `login`). Checked before every request.
+- **Server-side / idle expiry** — the service may invalidate the session independently (e.g. after inactivity or a server-side logout). The local file won't reflect this until a request fails.
 
-6. **Logout** — Revokes credentials server-side, clears auth cookies from the persistent browser profile (preserving device trust cookies), then deletes the session file.
+There is no automatic refresh for either expiry type.
+
+```bash
+<cli> logout  # revokes token server-side, clears auth cookies, deletes session.json
+```
+
+To remove the session file manually:
+
+```bash
+rm ~/.<cli>-cli/session.json
+```
+
+## Checking session status
+
+All CLIs provide a `whoami` command that makes a live request to verify the current session is still valid:
+
+```bash
+<cli> whoami  # prints account info, or errors if the session has expired or is invalid
+```
+
+Use this to check any auth method — keychain token, API key, or browser session.
+
+## Browser profile and device trust
+
+Each browser CLI keeps a persistent Chromium profile at `~/.<cli>-cli/browser-profile` to preserve device-trust cookies, so 2FA is not triggered on every login. `logout` clears auth cookies and localStorage but leaves the profile intact.
+
+Delete the profile only if you want a full reset — expect 2FA on next login:
+
+```bash
+rm -rf ~/.<cli>-cli/browser-profile
+```
 
 ## Development
 

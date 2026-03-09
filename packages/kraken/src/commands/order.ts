@@ -1,16 +1,15 @@
 import { krakenPrivatePost } from "../client.js";
 import { prompt } from "../auth.js";
-import { handleJsonError } from "@finclis/cli-utils";
+import { writeJson, handleJsonError } from "@finclis/cli-utils";
+import type { BaseCommandOpts } from "@finclis/cli-utils";
 
-interface OrderOpts {
+interface OrderOpts extends BaseCommandOpts {
   pair?: string;
   side?: string;
   type?: string;
   amount?: string;
   price?: string;
   yes?: boolean;
-  json?: boolean;
-  verbose?: boolean;
 }
 
 export async function orderCommand(opts: OrderOpts = {}): Promise<void> {
@@ -75,10 +74,14 @@ export async function orderCommand(opts: OrderOpts = {}): Promise<void> {
 
     const result = await krakenPrivatePost("/0/private/AddOrder", params);
 
+    if (opts.json) {
+      writeJson({ txid: result.txid, descr: result.descr?.order });
+      return;
+    }
+
     console.log(`Order placed: ${result.txid?.join(", ") || "unknown"}`);
     if (result.descr?.order) console.log(`Description: ${result.descr.order}`);
   } catch (err: any) {
-    if (err.message === "exit") throw err;
     if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(1);

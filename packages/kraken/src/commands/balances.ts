@@ -2,6 +2,7 @@ import { krakenPrivatePost, krakenPublicGet } from "../client.js";
 import { fetchRates } from "../rates.js";
 import { writeJson, handleJsonError } from "@finclis/cli-utils";
 import type { BaseCommandOpts } from "@finclis/cli-utils";
+import { printTable } from "../display.js";
 
 // Source: CCXT commonCurrencies for Kraken (industry standard mapping for legacy X/Z-prefixed assets)
 const ASSET_CODE_TO_NAME: Record<string, string> = {
@@ -174,17 +175,6 @@ export async function balancesCommand(opts: BalancesOpts = {}): Promise<void> {
       }
       writeJson(out);
       return;
-    }
-
-    const GAP = 2;
-    function printTable(headers: string[], rows: string[][]): void {
-      const widths = headers.map((h, i) =>
-        Math.max(h.length, ...rows.map(r => r[i].length)) + GAP
-      );
-      const fmt = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i])).join("").trimEnd();
-      console.log(fmt(headers));
-      console.log(fmt(headers.map(h => "—".repeat(h.length))));
-      for (const row of rows) console.log(fmt(row));
     }
 
     if (quoteCurrency) {

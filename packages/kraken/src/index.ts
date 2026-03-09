@@ -3,7 +3,8 @@ import { Command } from "commander";
 import { authViewCommand, authSetCommand, authClearCommand } from "./commands/auth.js";
 import { whoamiCommand } from "./commands/whoami.js";
 import { balancesCommand } from "./commands/balances.js";
-import { ordersCommand } from "./commands/orders.js";
+import { ordersCommand, cancelCommand, queryCommand } from "./commands/orders.js";
+import { tickerCommand } from "./commands/ticker.js";
 import { historyCommand } from "./commands/history.js";
 import { orderCommand } from "./commands/order.js";
 import { fundingCommand } from "./commands/funding.js";
@@ -46,6 +47,15 @@ program
   .option("--json", "Output raw JSON")
   .action(whoamiCommand);
 
+program
+  .command("ticker")
+  .argument("<asset>", "Asset or pair: BTC, ETH, XBTUSD, BTC/USD")
+  .description("Show current price and 24h stats (no auth required)")
+  .option("--quote <currency>", "Quote currency when only base is given (default: USD)", "USD")
+  .option("--json", "Output raw JSON")
+  .addHelpText("after", "\nExamples:\n  kraken ticker BTC\n  kraken ticker ETH --quote EUR\n  kraken ticker XBTUSD\n  kraken ticker BTC --json")
+  .action(tickerCommand);
+
 // Account
 program
   .command("balances")
@@ -86,6 +96,24 @@ orders
   .option("--json", "Output raw JSON")
   .addHelpText("after", "\nExamples:\n  kraken orders history\n  kraken orders history --month              # current month, interactive\n  kraken orders history --month 2026-01     # January 2026\n  kraken orders history --pair XBTUSD --limit 50")
   .action(historyCommand);
+
+orders
+  .command("cancel [txid]")
+  .description("Cancel an open order by transaction ID, or all orders with --all")
+  .option("--all", "Cancel all open orders")
+  .option("--yes", "Skip confirmation prompt")
+  .option("-v, --verbose", "Log HTTP requests")
+  .option("--json", "Output raw JSON")
+  .addHelpText("after", "\nExamples:\n  kraken orders cancel OABCD-11111-AAAAA\n  kraken orders cancel --all\n  kraken orders cancel --all --yes")
+  .action(cancelCommand);
+
+orders
+  .command("query [txid...]")
+  .description("Look up orders by transaction ID, or list all open orders")
+  .option("--open", "List all open/pending orders (cancellable)")
+  .option("-v, --verbose", "Log HTTP requests")
+  .option("--json", "Output raw JSON")
+  .action(queryCommand);
 
 orders
   .command("place")

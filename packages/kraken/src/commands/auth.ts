@@ -6,11 +6,14 @@ export async function authViewCommand(): Promise<void> {
     console.log("No credentials stored. Run: kraken auth set");
     return;
   }
-  const masked = creds.apiSecret.length > 12
+  const maskedKey = creds.apiKey.length > 10
+    ? creds.apiKey.slice(0, 4) + "…" + creds.apiKey.slice(-4)
+    : "****";
+  const maskedSecret = creds.apiSecret.length > 12
     ? creds.apiSecret.slice(0, 6) + "…" + creds.apiSecret.slice(-6)
     : "****";
-  console.log(`apiKey:    ${creds.apiKey}`);
-  console.log(`apiSecret: ${masked}`);
+  console.log(`apiKey:    ${maskedKey}`);
+  console.log(`apiSecret: ${maskedSecret}`);
   console.log(`2FA:       ${creds.twoFactor ? "enabled" : "disabled"}`);
 }
 

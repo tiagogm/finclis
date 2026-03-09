@@ -3,6 +3,7 @@ import { mock } from "bun:test";
 export const mockKrakenPrivatePost = mock(() => Promise.resolve({} as any));
 export const mockKrakenPublicGet = mock(() => Promise.resolve({} as any));
 export const mockFetchRates = mock(() => Promise.resolve({} as Record<string, number>));
+export const mockPrompt = mock(() => Promise.resolve("y"));
 
 export function registerMocks() {
   mock.module("../client.js", () => ({
@@ -17,7 +18,7 @@ export function registerMocks() {
     saveCredentials: mock(() => Promise.resolve()),
     loadCredentials: mock(() => Promise.resolve(null)),
     clearCredentials: mock(() => Promise.resolve()),
-    prompt: mock(() => Promise.resolve("y")),
+    prompt: mockPrompt,
   }));
 
   mock.module("../rates.js", () => ({

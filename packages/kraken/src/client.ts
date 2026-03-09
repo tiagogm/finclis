@@ -61,7 +61,13 @@ export function signRequest(
   sha256.update(nonce + postData);
   const sha256Hash = sha256.digest(); // Uint8Array
 
-  const secretBytes = Buffer.from(apiSecret, "base64");
+  let secretBytes: Buffer;
+  try {
+    secretBytes = Buffer.from(apiSecret, "base64");
+    if (secretBytes.length === 0) throw new Error("empty");
+  } catch {
+    throw new Error("Stored API secret is not valid base64. Run 'kraken auth set' to re-enter credentials.");
+  }
   const hmac = new Bun.CryptoHasher("sha512", secretBytes);
   hmac.update(uriPath);
   hmac.update(sha256Hash);

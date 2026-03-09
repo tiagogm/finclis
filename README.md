@@ -1,6 +1,14 @@
 # finclis
 
-Unofficial CLIs for financial services. Each package is independently compiled and distributed.
+'Unofficial' CLIs for popular financial platforms. Each package is independently compiled and distributed.
+
+## Motivation
+Part of a set a of tools to automate my personal finances and to play around with claude.
+
+This CLIs are meant to be used with other tools and agents to query, render data and execute instructions
+
+Code is 100% produced by Claude and partly human reviewed
+
 
 ## Packages
 

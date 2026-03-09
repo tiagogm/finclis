@@ -10,6 +10,7 @@ Requires [Bun](https://bun.sh).
 git clone https://github.com/tiagogm/finclis
 cd finclis
 bun install
+bunx playwright install chromium   # required for browser-based login
 bun run --cwd packages/wise wise --help
 ```
 

@@ -2,11 +2,6 @@
 
 ## Next steps
 
-- [ ] Fix statements command — currently returns 404, endpoint path likely wrong
-- [x] Implement `send` command — full transfer flow (quote → transfer-requirements → transfer → payment with SCA)
-- [x] Implement `contacts` command — browse and search Wise contacts
-- [x] Implement `recipients` command — browse and search saved bank recipients
-- [x] Implement `transfer` command — get transfer details by ID
 - [ ] Add `--yes` flag to `move` — skip confirmation prompt for scripted use (send already has it)
 - [ ] Add `-v` flag to `move` — verbose HTTP logging (send already has it)
 

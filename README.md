@@ -39,7 +39,7 @@ See each package README for usage.
 
 ## Keychain credentials
 
-OAuth2 and API key CLIs store credentials in the OS keychain via `Bun.secrets`, namespaced per service. Nothing is written to disk in plaintext.
+OAuth2 and API key CLIs store credentials in the OS keychain via [Bun.secrets](https://bun.com/docs/runtime/secrets), namespaced per service. Nothing is written to disk in plaintext.
 
 ```bash
 <cli> auth view   # show stored credentials

@@ -1,23 +1,49 @@
-import { describe, it, expect, spyOn } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { registerMocks, mockKrakenPrivatePost, captureStdout } from "./__test-helpers.js";
+import { monthBounds } from "../validate.js";
+
+registerMocks();
+
+const { fundingCommand } = await import("./funding.js");
+
+const DEPOSIT_ENTRY = {
+  refid: "REFID1",
+  time: 1700000000,
+  type: "deposit",
+  asset: "ZUSD",
+  amount: "1000.0000",
+  fee: "0.0000",
+  balance: "1000.0000",
+};
+
+function captureLog(): { logs: string[]; restore: () => string } {
+  const logs: string[] = [];
+  const orig = console.log;
+  console.log = (...args: any[]) => { logs.push(args.join(" ")); };
+  return {
+    logs,
+    restore: () => { console.log = orig; return logs.join("\n"); },
+  };
+}
 
 describe("fundingCommand", () => {
-  it("prints deposit and withdrawal entries by default", async () => {
-    const client = await import("../client.js");
-    spyOn(client, "krakenPrivatePost").mockResolvedValueOnce({
+  const stdout = captureStdout();
+
+  beforeEach(() => {
+    stdout.reset();
+    mockKrakenPrivatePost.mockReset();
+  });
+
+  afterEach(() => stdout.restore());
+
+  it("prints deposit and withdrawal entries as aligned table (no tabs)", async () => {
+    mockKrakenPrivatePost.mockResolvedValueOnce({
       ledger: {
-        "LABCD-11111-AAAAA": {
-          refid: "REFID1",
-          time: 1700000000,
-          type: "deposit",
-          asset: "ZUSD",
-          amount: "1000.0000",
-          fee: "0.0000",
-          balance: "1000.0000",
-        },
+        "LABCD-11111-AAAAA": DEPOSIT_ENTRY,
         "LABCD-22222-BBBBB": {
           refid: "REFID2",
           time: 1700100000,
-          type: "trade",  // should be filtered out
+          type: "trade",  // filtered out
           asset: "XXBT",
           amount: "0.01000000",
           fee: "0.0000",
@@ -27,47 +53,109 @@ describe("fundingCommand", () => {
       count: 2,
     });
 
-    const logs: string[] = [];
-    spyOn(console, "log").mockImplementation((...args: any[]) => { logs.push(args.join(" ")); });
-
-    const { fundingCommand } = await import("./funding.js");
+    const cap = captureLog();
     await fundingCommand({});
+    const output = cap.restore();
 
-    const output = logs.join("\n");
     expect(output).toContain("deposit");
     expect(output).toContain("ZUSD");
     expect(output).toContain("1000.0000");
     expect(output).not.toContain("trade");
+    expect(output).not.toContain("\t");
+    expect(output).toContain("Date");
+    expect(output).toContain("Type");
+    expect(output).toContain("Asset");
+    expect(output).toContain("Amount");
+    expect(output).toContain("Fee");
+    expect(output).toContain("ID");
+    expect(output).toContain("Showing 1 entry.");
   });
 
   it("passes --type to the API call", async () => {
-    const client = await import("../client.js");
-    const spy = spyOn(client, "krakenPrivatePost").mockResolvedValueOnce({ ledger: {}, count: 0 });
+    mockKrakenPrivatePost.mockResolvedValueOnce({ ledger: {}, count: 0 });
 
-    spyOn(console, "log").mockImplementation(() => {});
-
-    const { fundingCommand } = await import("./funding.js");
+    const cap = captureLog();
     await fundingCommand({ type: "withdrawal" } as any);
+    cap.restore();
 
-    expect(spy).toHaveBeenCalledWith("/0/private/Ledgers", expect.objectContaining({ type: "withdrawal" }));
+    expect(mockKrakenPrivatePost).toHaveBeenCalledWith(
+      "/0/private/Ledgers",
+      expect.objectContaining({ type: "withdrawal" })
+    );
+  });
+
+  it("passes --asset to the API call", async () => {
+    mockKrakenPrivatePost.mockResolvedValueOnce({ ledger: {}, count: 0 });
+
+    const cap = captureLog();
+    await fundingCommand({ asset: "XXBT" } as any);
+    cap.restore();
+
+    expect(mockKrakenPrivatePost).toHaveBeenCalledWith(
+      "/0/private/Ledgers",
+      expect.objectContaining({ asset: "XXBT" })
+    );
   });
 
   it("outputs json when --json flag set", async () => {
-    const client = await import("../client.js");
-    spyOn(client, "krakenPrivatePost").mockResolvedValueOnce({
+    mockKrakenPrivatePost.mockResolvedValueOnce({
       ledger: {
-        "LABCD-11111-AAAAA": { time: 1700000000, type: "deposit", asset: "ZUSD", amount: "500.0000", fee: "0", balance: "500.0000" },
+        "LABCD-11111-AAAAA": {
+          time: 1700000000,
+          type: "deposit",
+          asset: "ZUSD",
+          amount: "500.0000",
+          fee: "0",
+          balance: "500.0000",
+        },
       },
       count: 1,
     });
 
-    const writes: string[] = [];
-    spyOn(process.stdout, "write").mockImplementation((data: any) => { writes.push(String(data)); return true; });
-
-    const { fundingCommand } = await import("./funding.js");
     await fundingCommand({ json: true });
 
-    const output = JSON.parse(writes[0]);
+    const output = JSON.parse(stdout.getOutput());
     expect(output).toHaveProperty("LABCD-11111-AAAAA");
+  });
+
+  it("passes --month 2026-02 as correct start/end timestamps to API", async () => {
+    mockKrakenPrivatePost.mockResolvedValueOnce({ ledger: {}, count: 0 });
+
+    const cap = captureLog();
+    await fundingCommand({ month: "2026-02" } as any);
+    cap.restore();
+
+    const { start, end } = monthBounds(2, 2026);
+    expect(mockKrakenPrivatePost).toHaveBeenCalledWith(
+      "/0/private/Ledgers",
+      expect.objectContaining({
+        start: String(start),
+        end: String(end),
+      })
+    );
+  });
+
+  it("shows month label when --month is set", async () => {
+    mockKrakenPrivatePost.mockResolvedValueOnce({ ledger: {}, count: 0 });
+
+    const cap = captureLog();
+    await fundingCommand({ month: "2026-02" } as any);
+    const output = cap.restore();
+
+    expect(output).toContain("February 2026");
+  });
+
+  it("non-TTY: outputs table without interactive prompt", async () => {
+    mockKrakenPrivatePost.mockResolvedValueOnce({
+      ledger: { "LABCD-11111-AAAAA": DEPOSIT_ENTRY },
+      count: 1,
+    });
+
+    const cap = captureLog();
+    await fundingCommand({});
+    const output = cap.restore();
+
+    expect(output).toContain("deposit");
+    expect(output).not.toContain("[n]ext page");
   });
 });

@@ -1,9 +1,50 @@
-import { loadSession, API_URL, type KrakenSession } from "./auth.js";
+import { loadCredentials, prompt, API_URL, type KrakenCredentials } from "./auth.js";
+
+const SECRETS_SERVICE = "com.kraken-cli";
+const SECRETS_OTP_NAME = "otp";
 
 let verbose = false;
+let cachedOtp: string | undefined;
 
 export function setVerbose(enabled: boolean): void {
   verbose = enabled;
+}
+
+export function setOtp(value: string): void {
+  cachedOtp = value;
+}
+
+async function loadOtpFromSecrets(): Promise<string | undefined> {
+  try {
+    return (await Bun.secrets.get({ service: SECRETS_SERVICE, name: SECRETS_OTP_NAME })) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function saveOtpToSecrets(otp: string): Promise<void> {
+  await Bun.secrets.set({ service: SECRETS_SERVICE, name: SECRETS_OTP_NAME, value: otp });
+}
+
+async function clearOtpCache(): Promise<void> {
+  cachedOtp = undefined;
+  try {
+    await Bun.secrets.delete({ service: SECRETS_SERVICE, name: SECRETS_OTP_NAME });
+  } catch {
+    // ignore
+  }
+}
+
+async function resolveOtp(credentials: KrakenCredentials): Promise<string | undefined> {
+  if (!credentials.twoFactor) return undefined;
+  if (process.env.KRAKEN_OTP) return process.env.KRAKEN_OTP;
+  if (cachedOtp) return cachedOtp;
+  const fromSecrets = await loadOtpFromSecrets();
+  if (fromSecrets) { cachedOtp = fromSecrets; return fromSecrets; }
+  const entered = (await prompt("2FA code: ")).trim();
+  cachedOtp = entered;
+  await saveOtpToSecrets(entered);
+  return entered;
 }
 
 /**
@@ -27,12 +68,12 @@ export function signRequest(
   return hmac.digest("base64");
 }
 
-async function requireSession(): Promise<KrakenSession> {
-  const session = await loadSession();
-  if (!session) {
+async function requireCredentials(): Promise<KrakenCredentials> {
+  const credentials = await loadCredentials();
+  if (!credentials) {
     process.exit(1);
   }
-  return session;
+  return credentials;
 }
 
 function parseKrakenError(body: any): string | null {
@@ -51,33 +92,48 @@ export async function krakenPrivatePost(
   uriPath: string,
   params: Record<string, string> = {},
 ): Promise<any> {
-  const session = await requireSession();
-  const nonce = Date.now().toString();
-  const postData = new URLSearchParams({ nonce, ...params }).toString();
-  const signature = signRequest(uriPath, nonce, postData, session.apiSecret);
+  const credentials = await requireCredentials();
 
-  const url = `${API_URL}${uriPath}`;
-  if (verbose) console.error(`-> POST ${url}`);
+  const doRequest = async (): Promise<any> => {
+    const otp = await resolveOtp(credentials);
+    const nonce = Date.now().toString();
+    const allParams = otp ? { nonce, otp, ...params } : { nonce, ...params };
+    const postData = new URLSearchParams(allParams).toString();
+    const signature = signRequest(uriPath, nonce, postData, credentials.apiSecret);
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "API-Key": session.apiKey,
-      "API-Sign": signature,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: postData,
-  });
+    const url = `${API_URL}${uriPath}`;
+    if (verbose) console.error(`-> POST ${url}`);
 
-  if (verbose) console.error(`<- ${res.status}`);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "API-Key": credentials.apiKey,
+        "API-Sign": signature,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: postData,
+    });
 
-  const json = await res.json();
-  if (verbose) console.error(`<- body: ${JSON.stringify(json).slice(0, 2000)}`);
+    if (verbose) console.error(`<- ${res.status}`);
 
-  const err = parseKrakenError(json);
-  if (err) throw new Error(err);
+    const json = await res.json();
+    if (verbose) console.error(`<- body: ${JSON.stringify(json).slice(0, 2000)}`);
 
-  return json.result;
+    const err = parseKrakenError(json);
+    if (err) throw new Error(err);
+
+    return json.result;
+  };
+
+  try {
+    return await doRequest();
+  } catch (e: any) {
+    if (credentials.twoFactor && e.message?.includes("Invalid signature")) {
+      await clearOtpCache();
+      return await doRequest();
+    }
+    throw e;
+  }
 }
 
 /**

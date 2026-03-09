@@ -2,35 +2,23 @@ import readline from "node:readline";
 
 export const API_URL = "https://api.kraken.com";
 
-export interface KrakenSession {
+export interface KrakenCredentials {
   apiKey: string;
   apiSecret: string;
+  twoFactor?: boolean;
 }
 
 const SERVICE = "com.kraken-cli";
 
-// Abstracted secrets store — allows injection in tests
-export interface SecretsStore {
-  set(opts: { service: string; name: string; value: string }): Promise<void>;
-  get(opts: { service: string; name: string }): Promise<string | null>;
-  delete(opts: { service: string; name: string }): Promise<void>;
+export async function saveCredentials(credentials: KrakenCredentials): Promise<void> {
+  await Bun.secrets.set({ service: SERVICE, name: "credentials", value: JSON.stringify(credentials) });
 }
 
-let _secrets: SecretsStore = Bun.secrets as unknown as SecretsStore;
-
-export function _setSecrets(store: SecretsStore): void {
-  _secrets = store;
-}
-
-export async function saveSession(session: KrakenSession): Promise<void> {
-  await _secrets.set({ service: SERVICE, name: "session", value: JSON.stringify(session) });
-}
-
-export async function loadSession(): Promise<KrakenSession | null> {
+export async function loadCredentials(): Promise<KrakenCredentials | null> {
   try {
-    const raw = await _secrets.get({ service: SERVICE, name: "session" });
+    const raw = await Bun.secrets.get({ service: SERVICE, name: "credentials" });
     if (!raw) {
-      console.error("Not logged in. Run: kraken login");
+      console.error("No credentials stored. Run: kraken auth set");
       return null;
     }
     const parsed = JSON.parse(raw);
@@ -41,19 +29,19 @@ export async function loadSession(): Promise<KrakenSession | null> {
       typeof parsed.apiSecret !== "string" ||
       !parsed.apiSecret
     ) {
-      console.error("Invalid session. Run: kraken login");
+      console.error("Invalid credentials. Run: kraken auth set");
       return null;
     }
-    return parsed as KrakenSession;
+    return parsed as KrakenCredentials;
   } catch {
-    console.error("Not logged in. Run: kraken login");
+    console.error("No credentials stored. Run: kraken auth set");
     return null;
   }
 }
 
-export async function clearSession(): Promise<void> {
+export async function clearCredentials(): Promise<void> {
   try {
-    await _secrets.delete({ service: SERVICE, name: "session" });
+    await Bun.secrets.delete({ service: SERVICE, name: "credentials" });
   } catch {
     // doesn't exist, that's fine
   }
@@ -67,9 +55,13 @@ export async function prompt(question: string, hidden = false): Promise<string> 
       try { execSync("stty echo", { stdio: "inherit" }); } catch {}
     };
 
-    process.on("exit", restoreEcho);
-    process.on("SIGINT", () => { restoreEcho(); process.exit(130); });
-    process.on("SIGTERM", () => { restoreEcho(); process.exit(143); });
+    const onExit = () => restoreEcho();
+    const onSigint = () => { restoreEcho(); process.exit(130); };
+    const onSigterm = () => { restoreEcho(); process.exit(143); };
+
+    process.on("exit", onExit);
+    process.on("SIGINT", onSigint);
+    process.on("SIGTERM", onSigterm);
 
     process.stdout.write(question);
     try {
@@ -87,7 +79,9 @@ export async function prompt(question: string, hidden = false): Promise<string> 
     } finally {
       restoreEcho();
       process.stdout.write("\n");
-      process.removeListener("exit", restoreEcho);
+      process.removeListener("exit", onExit);
+      process.removeListener("SIGINT", onSigint);
+      process.removeListener("SIGTERM", onSigterm);
     }
   }
 

@@ -1,9 +1,22 @@
-import { describe, it, expect, spyOn } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { registerMocks, mockKrakenPrivatePost, captureStdout } from "./__test-helpers.js";
+
+registerMocks();
+
+const { ordersCommand } = await import("./orders.js");
 
 describe("ordersCommand", () => {
+  const stdout = captureStdout();
+
+  beforeEach(() => {
+    stdout.reset();
+    mockKrakenPrivatePost.mockReset();
+  });
+
+  afterEach(() => stdout.restore());
+
   it("prints open orders as a table", async () => {
-    const client = await import("../client.js");
-    spyOn(client, "krakenPrivatePost").mockResolvedValueOnce({
+    mockKrakenPrivatePost.mockResolvedValueOnce({
       open: {
         "OABCD-12345-ABCDE": {
           descr: { pair: "XBTUSD", type: "buy", ordertype: "limit", price: "50000.00" },
@@ -15,10 +28,12 @@ describe("ordersCommand", () => {
     });
 
     const logs: string[] = [];
-    spyOn(console, "log").mockImplementation((...args: any[]) => { logs.push(args.join(" ")); });
+    const origLog = console.log;
+    console.log = (...args: any[]) => { logs.push(args.join(" ")); };
 
-    const { ordersCommand } = await import("./orders.js");
     await ordersCommand({});
+
+    console.log = origLog;
 
     const output = logs.join("\n");
     expect(output).toContain("XBTUSD");
@@ -27,31 +42,27 @@ describe("ordersCommand", () => {
   });
 
   it("prints message when no open orders", async () => {
-    const client = await import("../client.js");
-    spyOn(client, "krakenPrivatePost").mockResolvedValueOnce({ open: {} });
+    mockKrakenPrivatePost.mockResolvedValueOnce({ open: {} });
 
     const logs: string[] = [];
-    spyOn(console, "log").mockImplementation((...args: any[]) => { logs.push(args.join(" ")); });
+    const origLog = console.log;
+    console.log = (...args: any[]) => { logs.push(args.join(" ")); };
 
-    const { ordersCommand } = await import("./orders.js");
     await ordersCommand({});
+
+    console.log = origLog;
 
     expect(logs.join("")).toContain("No open orders");
   });
 
   it("outputs json when --json flag set", async () => {
-    const client = await import("../client.js");
-    spyOn(client, "krakenPrivatePost").mockResolvedValueOnce({
+    mockKrakenPrivatePost.mockResolvedValueOnce({
       open: { "OABCD-12345-ABCDE": { descr: { pair: "XBTUSD" } } },
     });
 
-    const writes: string[] = [];
-    spyOn(process.stdout, "write").mockImplementation((data: any) => { writes.push(String(data)); return true; });
-
-    const { ordersCommand } = await import("./orders.js");
     await ordersCommand({ json: true });
 
-    const output = JSON.parse(writes[0]);
+    const output = JSON.parse(stdout.getOutput());
     expect(output).toHaveProperty("OABCD-12345-ABCDE");
   });
 });

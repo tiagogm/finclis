@@ -1,17 +1,30 @@
-import { describe, it, expect, spyOn } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
+import { registerMocks, mockKrakenPrivatePost, captureStdout } from "./__test-helpers.js";
+
+registerMocks();
+
+const { orderCommand } = await import("./order.js");
 
 describe("orderCommand", () => {
+  const stdout = captureStdout();
+
+  beforeEach(() => {
+    stdout.reset();
+    mockKrakenPrivatePost.mockReset();
+  });
+
+  afterEach(() => stdout.restore());
+
   it("places a market buy with all flags and --yes", async () => {
-    const client = await import("../client.js");
-    const postSpy = spyOn(client, "krakenPrivatePost").mockResolvedValueOnce({
+    mockKrakenPrivatePost.mockResolvedValueOnce({
       txid: ["OTEST-11111-TTTTT"],
       descr: { order: "buy 0.01 XBTUSD @ market" },
     });
 
     const logs: string[] = [];
-    spyOn(console, "log").mockImplementation((...args: any[]) => { logs.push(args.join(" ")); });
+    const origLog = console.log;
+    console.log = (...args: any[]) => { logs.push(args.join(" ")); };
 
-    const { orderCommand } = await import("./order.js");
     await orderCommand({
       pair: "XBTUSD",
       side: "buy",
@@ -20,7 +33,9 @@ describe("orderCommand", () => {
       yes: true,
     });
 
-    expect(postSpy).toHaveBeenCalledWith("/0/private/AddOrder", expect.objectContaining({
+    console.log = origLog;
+
+    expect(mockKrakenPrivatePost).toHaveBeenCalledWith("/0/private/AddOrder", expect.objectContaining({
       pair: "XBTUSD",
       type: "buy",
       ordertype: "market",
@@ -30,16 +45,15 @@ describe("orderCommand", () => {
   });
 
   it("places a limit sell with price flag", async () => {
-    const client = await import("../client.js");
-    const postSpy = spyOn(client, "krakenPrivatePost").mockResolvedValueOnce({
+    mockKrakenPrivatePost.mockResolvedValueOnce({
       txid: ["OTEST-22222-SSSSS"],
       descr: { order: "sell 0.5 XBTUSD @ limit 60000" },
     });
 
     const logs: string[] = [];
-    spyOn(console, "log").mockImplementation((...args: any[]) => { logs.push(args.join(" ")); });
+    const origLog = console.log;
+    console.log = (...args: any[]) => { logs.push(args.join(" ")); };
 
-    const { orderCommand } = await import("./order.js");
     await orderCommand({
       pair: "XBTUSD",
       side: "sell",
@@ -49,7 +63,9 @@ describe("orderCommand", () => {
       yes: true,
     });
 
-    expect(postSpy).toHaveBeenCalledWith("/0/private/AddOrder", expect.objectContaining({
+    console.log = origLog;
+
+    expect(mockKrakenPrivatePost).toHaveBeenCalledWith("/0/private/AddOrder", expect.objectContaining({
       pair: "XBTUSD",
       type: "sell",
       ordertype: "limit",
@@ -60,35 +76,45 @@ describe("orderCommand", () => {
 
   it("exits with error for invalid side", async () => {
     const errors: string[] = [];
-    spyOn(console, "error").mockImplementation((...args: any[]) => { errors.push(args.join(" ")); });
-    spyOn(process, "exit").mockImplementation(() => { throw new Error("exit"); });
+    const origError = console.error;
+    console.error = (...args: any[]) => { errors.push(args.join(" ")); };
+    const exitSpy = spyOn(process, "exit").mockImplementation(() => { throw new Error("exit"); });
 
-    const { orderCommand } = await import("./order.js");
-    await expect(orderCommand({
-      pair: "XBTUSD",
-      side: "invalid",
-      type: "market",
-      amount: "0.01",
-      yes: true,
-    })).rejects.toThrow("exit");
+    try {
+      await expect(orderCommand({
+        pair: "XBTUSD",
+        side: "invalid",
+        type: "market",
+        amount: "0.01",
+        yes: true,
+      })).rejects.toThrow("exit");
+    } finally {
+      console.error = origError;
+      exitSpy.mockRestore();
+    }
 
     expect(errors.join("")).toContain("buy");
   });
 
   it("exits with error for limit order missing price when --yes provided", async () => {
     const errors: string[] = [];
-    spyOn(console, "error").mockImplementation((...args: any[]) => { errors.push(args.join(" ")); });
-    spyOn(process, "exit").mockImplementation(() => { throw new Error("exit"); });
+    const origError = console.error;
+    console.error = (...args: any[]) => { errors.push(args.join(" ")); };
+    const exitSpy = spyOn(process, "exit").mockImplementation(() => { throw new Error("exit"); });
 
-    const { orderCommand } = await import("./order.js");
-    await expect(orderCommand({
-      pair: "XBTUSD",
-      side: "buy",
-      type: "limit",
-      amount: "0.01",
-      yes: true,
-      // no price
-    })).rejects.toThrow("exit");
+    try {
+      await expect(orderCommand({
+        pair: "XBTUSD",
+        side: "buy",
+        type: "limit",
+        amount: "0.01",
+        yes: true,
+        // no price
+      })).rejects.toThrow("exit");
+    } finally {
+      console.error = origError;
+      exitSpy.mockRestore();
+    }
 
     expect(errors.join("")).toContain("price");
   });

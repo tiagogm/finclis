@@ -86,6 +86,7 @@ Delete the profile only if you want a full reset — expect 2FA on next login:
 
 ```bash
 rm -rf ~/.<cli>-cli/browser-profile
+#example: rm -rf ~/.lloyds-cli/browser-profile
 ```
 
 ## Development

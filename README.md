@@ -18,6 +18,7 @@ Code is 100% produced by Claude and partly human reviewed
 | [trading212-cli](packages/trading212/README.md) | `trading212` | Unofficial CLI for Trading212 | API key |
 | [wise-cli](packages/wise/README.md) | `wise` | Unofficial CLI for Wise (TransferWise) | Browser |
 | [vanguard-cli](packages/vanguard/README.md) | `vanguard` | Unofficial CLI for Vanguard Investor UK | Browser |
+| [kraken-cli](packages/kraken/README.md) | `kraken` | Unofficial CLI for Kraken cryptocurrency exchange | API key |
 
 ## Installation
 

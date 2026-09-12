@@ -67,6 +67,17 @@ export function monthToPeriod(month: string): StatementPeriod {
   };
 }
 
+/**
+ * Default statement month ("YYYY-MM"), derived from the same UTC "today"
+ * that `resolveStatementPeriod` validates against. Deriving both from the
+ * same date basis prevents the default month from ever being rejected as
+ * "in the future" by its own validation (which could happen when local
+ * calendar fields are used in a timezone ahead of UTC).
+ */
+export function currentMonthUTC(today: string = new Date().toISOString().slice(0, 10)): string {
+  return today.slice(0, 7);
+}
+
 export function resolveStatementPeriod(
   month: string,
   today: string = new Date().toISOString().slice(0, 10)

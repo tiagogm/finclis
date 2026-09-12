@@ -165,13 +165,28 @@ export function buildLloydsStatement(
   const credits = rawTransactions.reduce((s, t) => s + (t.money_in ?? 0), 0);
   const debits = rawTransactions.reduce((s, t) => s + (t.money_out ?? 0), 0);
 
-  const transactions: StatementTransaction[] = rawTransactions.map((t) => ({
-    date: new Date(t.date).toISOString().slice(0, 10),
-    amount: t.money_in ?? t.money_out ?? 0,
-    direction: t.money_in !== undefined ? "credit" : "debit",
-    description: t.completeDescription.join(" - ") || t.description,
-    currency: "GBP",
-  }));
+  // Rows with neither money_in nor money_out (categorizeTransaction's OTHER)
+  // carry no money movement; excluding them keeps the transaction list
+  // consistent with credits/debits, like a statement listing only real flows.
+  const transactions: StatementTransaction[] = rawTransactions
+    .filter((t) => t.money_in !== undefined || t.money_out !== undefined)
+    .map((t) => ({
+      date: new Date(t.date).toISOString().slice(0, 10),
+      amount: t.money_in ?? t.money_out ?? 0,
+      direction: t.money_in !== undefined ? "credit" : "debit",
+      description: t.completeDescription.join(" - ") || t.description,
+      currency: "GBP",
+    }));
+
+  // The currentBalance fallback is only misleading for a past month: today's
+  // live balance includes flows from later periods. For the current month
+  // (period.end clamped to today) it genuinely is the period balance.
+  const notes: string[] = [];
+  if (rawTransactions.length === 0 && period.end < new Date().toISOString().slice(0, 10)) {
+    notes.push(
+      "No transactions in this period — balance reflects the current account balance, not a historical figure."
+    );
+  }
 
   return {
     platform: "lloyds",
@@ -183,9 +198,9 @@ export function buildLloydsStatement(
     cashBalance: null,
     credits,
     debits,
-    transactionCount: rawTransactions.length,
+    transactionCount: transactions.length,
     transactionsAvailable: true,
     transactions,
-    notes: [],
+    notes,
   };
 }

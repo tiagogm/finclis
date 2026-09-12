@@ -130,4 +130,63 @@ describe("statement --json", () => {
     const parsed = JSON.parse(stdout.getOutput());
     expect(parsed.message).toContain("Data older than 90 days requires a cached sync");
   });
+
+  it("reports the SCA message only for 403 trailing-fetch failures", async () => {
+    const now = new Date();
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonth = monthString(lastMonthDate);
+
+    mockMonzoGet.mockImplementation(async (path: string) => {
+      if (path.startsWith("/balance")) {
+        return { balance: 150000, currency: "GBP" };
+      }
+      if (path.startsWith("/transactions")) {
+        // First call (period range) succeeds; the trailing "flows since
+        // period end" call hits the SCA rejection.
+        if (path.includes(`since=${lastMonth}-01`)) return { transactions: [] };
+        throw new Error("API error 403: forbidden");
+      }
+      throw new Error(`Unexpected path: ${path}`);
+    });
+
+    const originalExit = process.exit;
+    process.exit = (() => undefined) as any;
+    try {
+      await statementCommand({ month: lastMonth, json: true });
+    } finally {
+      process.exit = originalExit;
+    }
+
+    const parsed = JSON.parse(stdout.getOutput());
+    expect(parsed.message).toContain("recent authentication (SCA)");
+  });
+
+  it("does not relabel non-403 trailing-fetch failures as SCA errors", async () => {
+    const now = new Date();
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonth = monthString(lastMonthDate);
+
+    mockMonzoGet.mockImplementation(async (path: string) => {
+      if (path.startsWith("/balance")) {
+        return { balance: 150000, currency: "GBP" };
+      }
+      if (path.startsWith("/transactions")) {
+        if (path.includes(`since=${lastMonth}-01`)) return { transactions: [] };
+        throw new Error("API error 503: Service Unavailable");
+      }
+      throw new Error(`Unexpected path: ${path}`);
+    });
+
+    const originalExit = process.exit;
+    process.exit = (() => undefined) as any;
+    try {
+      await statementCommand({ month: lastMonth, json: true });
+    } finally {
+      process.exit = originalExit;
+    }
+
+    const parsed = JSON.parse(stdout.getOutput());
+    expect(parsed.message).toContain("API error 503: Service Unavailable");
+    expect(parsed.message).not.toContain("recent authentication");
+  });
 });

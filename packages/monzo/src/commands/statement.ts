@@ -53,6 +53,10 @@ export async function statementCommand(opts: StatementOpts = {}): Promise<void> 
       try {
         afterPeriodTxs = await fetchAllTransactions(session.account_id, beforeISO, undefined);
       } catch (fetchErr: any) {
+        // Only the known 403/SCA case should be re-labeled; other failures
+        // (network, rate limits, 5xx) are retryable service problems and must
+        // surface as themselves.
+        if (!fetchErr?.message?.includes("403")) throw fetchErr;
         throw new Error(
           `Cannot derive the closing balance for ${monthStr}: Monzo requires recent authentication (SCA) to read transactions this old. ` +
             `Statements for months ending more than ~90 days ago are not currently supported. (${fetchErr.message})`

@@ -46,7 +46,7 @@ export async function summaryCommand(opts: SummaryOpts = {}): Promise<void> {
     let txs: any[];
 
     if (isOldRange(bounds.since)) {
-      const cached = loadCache(month, year);
+      const cached = loadCache(session.account_id, month, year);
       if (!cached) {
         console.error(
           `Data older than 90 days requires a cached sync. Run: monzo transactions --cache`

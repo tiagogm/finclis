@@ -34,7 +34,7 @@ export async function statementCommand(opts: StatementOpts = {}): Promise<void> 
     let periodTransactions: any[];
     if (isOldRange(sinceISO)) {
       const [year, month] = period.month.split("-").map(Number);
-      const cached = loadCache(month, year);
+      const cached = loadCache(session.account_id, month, year);
       if (!cached) {
         throw new Error("Data older than 90 days requires a cached sync. Run: monzo transactions --cache");
       }

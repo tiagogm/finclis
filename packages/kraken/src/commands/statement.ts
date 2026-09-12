@@ -1,16 +1,11 @@
 import { krakenPrivatePost } from "../client.js";
 import { buildKrakenStatement, type LedgerEntry } from "../statement.js";
-import { resolveStatementPeriod, printStatement, writeJson, handleJsonError } from "@finclis/cli-utils";
+import { resolveStatementPeriod, currentMonthUTC, printStatement, writeJson, handleJsonError } from "@finclis/cli-utils";
 import type { BaseCommandOpts } from "@finclis/cli-utils";
 
 interface StatementOpts extends BaseCommandOpts {
   month?: string;
   asset?: string;
-}
-
-function currentMonthString(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function defaultFiatAsset(balances: Record<string, string>): string {
@@ -43,7 +38,7 @@ async function fetchAllLedgerEntries(asset: string, startSec: number, endSec: nu
 
 export async function statementCommand(opts: StatementOpts = {}): Promise<void> {
   try {
-    const monthStr = opts.month ?? currentMonthString();
+    const monthStr = opts.month ?? currentMonthUTC();
     const todayStr = new Date().toISOString().slice(0, 10);
     const period = resolveStatementPeriod(monthStr, todayStr);
 

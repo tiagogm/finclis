@@ -61,9 +61,12 @@ export function isOldRange(since: string): boolean {
   return Date.now() - new Date(since).getTime() > NINETY_DAYS_MS;
 }
 
-export function loadCache(month: number, year: number): any[] | null {
+// Cache files are scoped by account id: `monzo accounts set` can switch the
+// active account at any time, and a per-month-only key would silently serve
+// one account's transactions for another.
+export function loadCache(accountId: string, month: number, year: number): any[] | null {
   const mm = String(month).padStart(2, "0");
-  const file = path.join(CACHE_DIR, `transactions-${year}-${mm}.json`);
+  const file = path.join(CACHE_DIR, `transactions-${accountId}-${year}-${mm}.json`);
   try {
     const raw = fs.readFileSync(file, "utf-8");
     return JSON.parse(raw);
@@ -91,6 +94,31 @@ export async function fetchTransactions(opts: {
 
   const data = await monzoGet(`/transactions?${params}`);
   return data.transactions || [];
+}
+
+export async function fetchAllTransactionsPaginated(opts: {
+  accountId: string;
+  since?: string;
+  before?: string;
+  /** Max transactions to return; undefined fetches the full range. */
+  limit?: number;
+}): Promise<any[]> {
+  const all: any[] = [];
+  let lastId: string | undefined;
+  while (true) {
+    const batch = await fetchTransactions({
+      accountId: opts.accountId,
+      since: lastId ?? opts.since,
+      before: opts.before,
+      limit: 100,
+      lastId,
+    });
+    all.push(...batch);
+    if (batch.length < 100) break;
+    if (opts.limit && all.length >= opts.limit) break;
+    lastId = batch[batch.length - 1].id;
+  }
+  return all;
 }
 
 interface TransactionsOpts extends BaseCommandOpts {
@@ -139,7 +167,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
       // Check cache for old data
       if (since && isOldRange(since) && opts.month) {
         const parsed = parseMonth(opts.month!)!;
-        const cached = loadCache(parsed.month, parsed.year);
+        const cached = loadCache(session.account_id, parsed.month, parsed.year);
         if (!cached) {
           console.error(
             `Data older than 90 days requires a cached sync. Run: monzo transactions --cache`
@@ -150,23 +178,12 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
         return;
       }
 
-      const allTxs: any[] = [];
-      let lastId: string | undefined;
-      const limit = opts.limit ? parseInt(opts.limit, 10) : 100;
-
-      while (true) {
-        const batch = await fetchTransactions({
-          accountId: session.account_id,
-          since,
-          before,
-          limit: 100,
-          lastId,
-        });
-        allTxs.push(...batch);
-        if (batch.length < 100) break;
-        if (limit && allTxs.length >= limit) break;
-        lastId = batch[batch.length - 1].id;
-      }
+      const allTxs = await fetchAllTransactionsPaginated({
+        accountId: session.account_id,
+        since,
+        before,
+        limit: opts.limit ? parseInt(opts.limit, 10) : 100,
+      });
 
       writeJson(allTxs);
       return;
@@ -210,7 +227,7 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
 
         // Use cache for old data
         if (isOldRange(since)) {
-          const cached = loadCache(currentMonth, currentYear);
+          const cached = loadCache(session.account_id, currentMonth, currentYear);
           if (!cached) {
             console.error(
               `Data older than 90 days requires a cached sync. Run: monzo transactions --cache`
@@ -348,7 +365,7 @@ async function syncTransactions(session: MonzoSession, fromDate: Date): Promise<
     }
 
     if (!failed) {
-      const cacheFile = path.join(CACHE_DIR, `transactions-${label}.json`);
+      const cacheFile = path.join(CACHE_DIR, `transactions-${session.account_id}-${label}.json`);
       fs.writeFileSync(cacheFile, JSON.stringify(transactions, null, 2), { mode: 0o600 });
       console.log(`Synced ${label}: ${transactions.length} transactions`);
     }

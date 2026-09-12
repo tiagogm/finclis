@@ -23,6 +23,7 @@ export function registerMocks() {
   mock.module("../auth.js", () => ({
     API_URL: "https://api.monzo.com",
     AUTH_URL: "https://auth.monzo.com",
+    CACHE_DIR: "/tmp/monzo-cli-test-cache",
     saveSession: mock(() => Promise.resolve()),
     loadSession: mock(() => Promise.resolve(null)),
     clearSession: mock(() => Promise.resolve()),
@@ -60,6 +61,7 @@ export function registerMocks() {
 
   mock.module("../validate.js", () => ({
     validateDate: (value: string) => value,
+    parseDateValue: (value: string) => new Date(value),
     parseMonth: (s: string) => {
       const [m, y] = s.split("-").map(Number);
       return { month: m, year: y };

@@ -7,7 +7,7 @@ import {
   formatAmount,
   isOldRange,
   loadCache,
-  fetchTransactions,
+  fetchAllTransactionsPaginated,
 } from "./transactions.js";
 
 interface SummaryOpts extends BaseCommandOpts {
@@ -46,7 +46,7 @@ export async function summaryCommand(opts: SummaryOpts = {}): Promise<void> {
     let txs: any[];
 
     if (isOldRange(bounds.since)) {
-      const cached = loadCache(month, year);
+      const cached = loadCache(session.account_id, month, year);
       if (!cached) {
         console.error(
           `Data older than 90 days requires a cached sync. Run: monzo transactions --cache`
@@ -55,20 +55,11 @@ export async function summaryCommand(opts: SummaryOpts = {}): Promise<void> {
       }
       txs = cached;
     } else {
-      txs = [];
-      let lastId: string | undefined;
-      while (true) {
-        const batch = await fetchTransactions({
-          accountId: session.account_id,
-          since: bounds.since,
-          before: bounds.before,
-          limit: 100,
-          lastId,
-        });
-        txs.push(...batch);
-        if (batch.length < 100) break;
-        lastId = batch[batch.length - 1].id;
-      }
+      txs = await fetchAllTransactionsPaginated({
+        accountId: session.account_id,
+        since: bounds.since,
+        before: bounds.before,
+      });
     }
 
     // Aggregate by category

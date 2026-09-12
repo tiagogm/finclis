@@ -67,6 +67,20 @@ export function monthToPeriod(month: string): StatementPeriod {
   };
 }
 
+export function resolveStatementPeriod(
+  month: string,
+  today: string = new Date().toISOString().slice(0, 10)
+): StatementPeriod {
+  const period = monthToPeriod(month);
+  if (period.start > today) {
+    throw new Error(`Invalid month: "${month}" is in the future.`);
+  }
+  if (today < period.end) {
+    return { ...period, end: today };
+  }
+  return period;
+}
+
 export function deriveClosingBalance(currentBalance: number, flowsSincePeriodEnd: number): number {
   return currentBalance - flowsSincePeriodEnd;
 }

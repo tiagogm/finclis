@@ -13,4 +13,10 @@ export type {
   BalanceSource,
   TransactionDirection,
 } from "./statement.js";
-export { monthToPeriod, deriveClosingBalance, deriveOpeningBalance, printStatement } from "./statement.js";
+export {
+  monthToPeriod,
+  resolveStatementPeriod,
+  deriveClosingBalance,
+  deriveOpeningBalance,
+  printStatement,
+} from "./statement.js";

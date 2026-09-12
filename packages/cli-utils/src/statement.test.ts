@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import {
   monthToPeriod,
+  resolveStatementPeriod,
   deriveClosingBalance,
   deriveOpeningBalance,
   printStatement,
@@ -28,6 +29,29 @@ describe("monthToPeriod", () => {
 
   it("throws on out-of-range month", () => {
     expect(() => monthToPeriod("2026-13")).toThrow('Invalid month: "2026-13". Expected YYYY-MM.');
+  });
+});
+
+describe("resolveStatementPeriod", () => {
+  it("returns the full month unchanged when it is entirely in the past", () => {
+    const period = resolveStatementPeriod("2026-08", "2026-09-12");
+    expect(period).toEqual({ month: "2026-08", start: "2026-08-01", end: "2026-08-31" });
+  });
+
+  it("clamps end to today when the month is still in progress", () => {
+    const period = resolveStatementPeriod("2026-09", "2026-09-12");
+    expect(period).toEqual({ month: "2026-09", start: "2026-09-01", end: "2026-09-12" });
+  });
+
+  it("does not clamp when today is exactly the last day of the month", () => {
+    const period = resolveStatementPeriod("2026-09", "2026-09-30");
+    expect(period.end).toBe("2026-09-30");
+  });
+
+  it("throws when the month has not started yet", () => {
+    expect(() => resolveStatementPeriod("2026-10", "2026-09-12")).toThrow(
+      'Invalid month: "2026-10" is in the future.'
+    );
   });
 });
 

@@ -15,6 +15,7 @@ export type {
 } from "./statement.js";
 export {
   monthToPeriod,
+  currentMonthUTC,
   resolveStatementPeriod,
   deriveClosingBalance,
   deriveOpeningBalance,

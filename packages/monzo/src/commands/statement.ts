@@ -1,16 +1,11 @@
 import { monzoGet, requireSession } from "../client.js";
 import { fetchTransactions, isOldRange, loadCache } from "./transactions.js";
 import { buildMonzoStatement } from "../statement.js";
-import { resolveStatementPeriod, printStatement, writeJson, handleJsonError } from "@finclis/cli-utils";
+import { resolveStatementPeriod, currentMonthUTC, printStatement, writeJson, handleJsonError } from "@finclis/cli-utils";
 import type { BaseCommandOpts } from "@finclis/cli-utils";
 
 interface StatementOpts extends BaseCommandOpts {
   month?: string;
-}
-
-function currentMonthString(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 async function fetchAllTransactions(accountId: string, since?: string, before?: string): Promise<any[]> {
@@ -28,7 +23,7 @@ async function fetchAllTransactions(accountId: string, since?: string, before?: 
 export async function statementCommand(opts: StatementOpts = {}): Promise<void> {
   try {
     const session = await requireSession();
-    const monthStr = opts.month ?? currentMonthString();
+    const monthStr = opts.month ?? currentMonthUTC();
     const todayStr = new Date().toISOString().slice(0, 10);
     const period = resolveStatementPeriod(monthStr, todayStr);
     const isCurrentPeriod = period.end === todayStr;

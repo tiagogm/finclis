@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import {
   monthToPeriod,
+  currentMonthUTC,
   resolveStatementPeriod,
   deriveClosingBalance,
   deriveOpeningBalance,
@@ -52,6 +53,20 @@ describe("resolveStatementPeriod", () => {
     expect(() => resolveStatementPeriod("2026-10", "2026-09-12")).toThrow(
       'Invalid month: "2026-10" is in the future.'
     );
+  });
+});
+
+describe("currentMonthUTC", () => {
+  it("derives the month from the same UTC basis as resolveStatementPeriod's default", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    expect(currentMonthUTC()).toBe(today.slice(0, 7));
+    // The invariant that was previously broken: the default month must never
+    // be rejected as "in the future" by the period validation.
+    expect(() => resolveStatementPeriod(currentMonthUTC())).not.toThrow();
+  });
+
+  it("accepts an explicit today override", () => {
+    expect(currentMonthUTC("2026-09-12")).toBe("2026-09");
   });
 });
 

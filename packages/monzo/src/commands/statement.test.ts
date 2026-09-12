@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import fs from "node:fs";
 import { mockMonzoGet, mockRequireSession, registerMocks, captureStdout } from "./__test-helpers.js";
 
 registerMocks();
@@ -198,5 +199,42 @@ describe("statement --json", () => {
     const parsed = JSON.parse(stdout.getOutput());
     expect(parsed.message).toContain("API error 503: Service Unavailable");
     expect(parsed.message).not.toContain("recent authentication");
+  });
+
+  it("fails fast with the SCA message for a cached month older than 90 days", async () => {
+    const now = new Date();
+    const oldDate = new Date(now.getFullYear(), now.getMonth() - 4, 1);
+    const oldMonth = monthString(oldDate);
+    const cacheFile = `/tmp/monzo-cli-test-cache/transactions-acc_test123-${oldDate.getFullYear()}-${String(oldDate.getMonth() + 1).padStart(2, "0")}.json`;
+
+    fs.mkdirSync("/tmp/monzo-cli-test-cache", { recursive: true });
+    fs.writeFileSync(
+      cacheFile,
+      JSON.stringify([{ id: "tx_old", created: `${oldMonth}-05T10:00:00Z`, amount: 100, currency: "GBP", description: "Old" }])
+    );
+
+    mockMonzoGet.mockImplementation(async (path: string) => {
+      if (path.startsWith("/balance")) {
+        return { balance: 150000, currency: "GBP" };
+      }
+      if (path.startsWith("/accounts")) {
+        return { accounts: [{ id: "acc_test123", description: "Old Account" }] };
+      }
+      // The trailing fetch (since=period.end, >90 days old) must never be
+      // attempted: it can only fail with SCA, so the command errors first.
+      throw new Error(`Unexpected call for old-range branch: ${path}`);
+    });
+
+    const originalExit = process.exit;
+    process.exit = (() => undefined) as any;
+    try {
+      await statementCommand({ month: oldMonth, json: true });
+    } finally {
+      process.exit = originalExit;
+      fs.unlinkSync(cacheFile);
+    }
+
+    const parsed = JSON.parse(stdout.getOutput());
+    expect(parsed.message).toContain("recent authentication (SCA)");
   });
 });

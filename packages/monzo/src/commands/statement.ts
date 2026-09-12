@@ -50,6 +50,15 @@ export async function statementCommand(opts: StatementOpts = {}): Promise<void> 
 
     let flowsSincePeriodEndPence = 0;
     if (!isCurrentPeriod) {
+      // For a cached month older than 90 days, the trailing range (since
+      // period.end) is itself beyond the SCA window, so the fetch can only
+      // fail — error immediately instead of burning the round trip.
+      if (isOldRange(beforeISO)) {
+        throw new Error(
+          `Cannot derive the closing balance for ${monthStr}: Monzo requires recent authentication (SCA) to read transactions this old. ` +
+            `Statements for months ending more than ~90 days ago are not currently supported.`
+        );
+      }
       let afterPeriodTxs: any[];
       try {
         afterPeriodTxs = await fetchAllTransactionsPaginated({

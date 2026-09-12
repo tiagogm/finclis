@@ -6,6 +6,7 @@ import { profilesCommand } from "./commands/profiles.js";
 import { balancesCommand } from "./commands/balances.js";
 import { ratesCommand } from "./commands/rates.js";
 import { statementsCommand } from "./commands/statements.js";
+import { statementCommand } from "./commands/statement.js";
 import { transferCommand } from "./commands/transfer.js";
 import { transfersCommand } from "./commands/transfers.js";
 import { contactsCommand } from "./commands/contacts.js";
@@ -91,6 +92,16 @@ program
   .option("--json", "Output raw JSON")
   .addHelpText("after", "\nExamples:\n  wise statements --currency GBP --from 2026-01-01 --to 2026-01-31\n  wise statements --currency EUR --from 2026-01-01 --to 2026-03-31 --json")
   .action(statementsCommand);
+
+program
+  .command("statement")
+  .description("Standard bank-statement-style report for a month")
+  .option("--month <YYYY-MM>", "Month to report on (default: current)")
+  .option("--currency <CODE>", "Balance currency (default: primary balance)")
+  .option("--json", "Output raw JSON")
+  .option("-v, --verbose", "Log HTTP requests")
+  .addHelpText("after", "\nExamples:\n  wise statement --month 2026-08\n  wise statement --month 2026-08 --currency EUR --json")
+  .action(statementCommand);
 
 // People
 program

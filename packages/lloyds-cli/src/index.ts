@@ -6,6 +6,7 @@ import { whoamiCommand } from "./commands/whoami.js";
 import { balanceCommand } from "./commands/balance.js";
 import { transactionsCommand } from "./commands/transactions.js";
 import { summaryCommand } from "./commands/summary.js";
+import { statementCommand } from "./commands/statement.js";
 import { setVerbose, cleanup } from "./client.js";
 
 const program = new Command();
@@ -62,6 +63,15 @@ program
   .option("-v, --verbose", "Log HTTP requests to stderr")
   .option("--json", "Output raw JSON")
   .action(summaryCommand);
+
+program
+  .command("statement")
+  .description("Standard bank-statement-style report for a month")
+  .option("--month <YYYY-MM>", "Month to report on (default: current month)")
+  .option("--no-cache", "Bypass cache and fetch live data")
+  .option("-v, --verbose", "Log HTTP requests to stderr")
+  .option("--json", "Output raw JSON")
+  .action(statementCommand);
 
 program.action(() => {
   program.help();

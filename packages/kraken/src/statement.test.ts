@@ -5,7 +5,7 @@ const period = { month: "2026-08", start: "2026-08-01", end: "2026-08-31" };
 
 function entry(overrides: Partial<LedgerEntry> = {}): LedgerEntry {
   return {
-    time: 1723000000, // within August 2026
+    time: 1785542400, // 2026-08-01T00:00:00Z — within August 2026
     type: "deposit",
     asset: "ZUSD",
     amount: "500.0000",

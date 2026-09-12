@@ -96,6 +96,31 @@ export async function fetchTransactions(opts: {
   return data.transactions || [];
 }
 
+export async function fetchAllTransactionsPaginated(opts: {
+  accountId: string;
+  since?: string;
+  before?: string;
+  /** Max transactions to return; undefined fetches the full range. */
+  limit?: number;
+}): Promise<any[]> {
+  const all: any[] = [];
+  let lastId: string | undefined;
+  while (true) {
+    const batch = await fetchTransactions({
+      accountId: opts.accountId,
+      since: lastId ?? opts.since,
+      before: opts.before,
+      limit: 100,
+      lastId,
+    });
+    all.push(...batch);
+    if (batch.length < 100) break;
+    if (opts.limit && all.length >= opts.limit) break;
+    lastId = batch[batch.length - 1].id;
+  }
+  return all;
+}
+
 interface TransactionsOpts extends BaseCommandOpts {
   from?: string;
   to?: string;
@@ -153,23 +178,12 @@ export async function transactionsCommand(opts: TransactionsOpts = {}): Promise<
         return;
       }
 
-      const allTxs: any[] = [];
-      let lastId: string | undefined;
-      const limit = opts.limit ? parseInt(opts.limit, 10) : 100;
-
-      while (true) {
-        const batch = await fetchTransactions({
-          accountId: session.account_id,
-          since,
-          before,
-          limit: 100,
-          lastId,
-        });
-        allTxs.push(...batch);
-        if (batch.length < 100) break;
-        if (limit && allTxs.length >= limit) break;
-        lastId = batch[batch.length - 1].id;
-      }
+      const allTxs = await fetchAllTransactionsPaginated({
+        accountId: session.account_id,
+        since,
+        before,
+        limit: opts.limit ? parseInt(opts.limit, 10) : 100,
+      });
 
       writeJson(allTxs);
       return;

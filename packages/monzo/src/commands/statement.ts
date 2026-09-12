@@ -1,23 +1,11 @@
 import { monzoGet, requireSession } from "../client.js";
-import { fetchTransactions, isOldRange, loadCache } from "./transactions.js";
+import { fetchAllTransactionsPaginated, isOldRange, loadCache } from "./transactions.js";
 import { buildMonzoStatement } from "../statement.js";
 import { resolveStatementPeriod, currentMonthUTC, printStatement, writeJson, handleJsonError } from "@finclis/cli-utils";
 import type { BaseCommandOpts } from "@finclis/cli-utils";
 
 interface StatementOpts extends BaseCommandOpts {
   month?: string;
-}
-
-async function fetchAllTransactions(accountId: string, since?: string, before?: string): Promise<any[]> {
-  const all: any[] = [];
-  let lastId: string | undefined;
-  while (true) {
-    const batch = await fetchTransactions({ accountId, since: lastId ?? since, before, limit: 100, lastId });
-    all.push(...batch);
-    if (batch.length < 100) break;
-    lastId = batch[batch.length - 1].id;
-  }
-  return all;
 }
 
 export async function statementCommand(opts: StatementOpts = {}): Promise<void> {
@@ -40,7 +28,11 @@ export async function statementCommand(opts: StatementOpts = {}): Promise<void> 
       }
       periodTransactions = cached;
     } else {
-      periodTransactions = await fetchAllTransactions(session.account_id, sinceISO, beforeISO);
+      periodTransactions = await fetchAllTransactionsPaginated({
+        accountId: session.account_id,
+        since: sinceISO,
+        before: beforeISO,
+      });
     }
 
     const balanceData = await monzoGet(`/balance?account_id=${encodeURIComponent(session.account_id)}`);
@@ -60,7 +52,10 @@ export async function statementCommand(opts: StatementOpts = {}): Promise<void> 
     if (!isCurrentPeriod) {
       let afterPeriodTxs: any[];
       try {
-        afterPeriodTxs = await fetchAllTransactions(session.account_id, beforeISO, undefined);
+        afterPeriodTxs = await fetchAllTransactionsPaginated({
+          accountId: session.account_id,
+          since: beforeISO,
+        });
       } catch (fetchErr: any) {
         // Only the known 403/SCA case should be re-labeled; other failures
         // (network, rate limits, 5xx) are retryable service problems and must

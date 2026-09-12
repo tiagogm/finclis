@@ -1,7 +1,7 @@
 import { wiseGet, getProfileId } from "../client.js";
 import { validateCurrency } from "../validate.js";
 import { buildWiseStatement } from "../statement.js";
-import { resolveStatementPeriod, printStatement, writeJson, handleJsonError } from "@finclis/cli-utils";
+import { resolveStatementPeriod, currentMonthUTC, printStatement, writeJson, handleJsonError } from "@finclis/cli-utils";
 import type { BaseCommandOpts } from "@finclis/cli-utils";
 
 interface StatementOpts extends BaseCommandOpts {
@@ -9,15 +9,10 @@ interface StatementOpts extends BaseCommandOpts {
   currency?: string;
 }
 
-function currentMonthString(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-
 export async function statementCommand(opts: StatementOpts = {}): Promise<void> {
   try {
     const profileId = getProfileId();
-    const monthStr = opts.month ?? currentMonthString();
+    const monthStr = opts.month ?? currentMonthUTC();
     const period = resolveStatementPeriod(monthStr);
 
     const balances = await wiseGet(`/v4/profiles/${profileId}/balances?types=STANDARD`);

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mockMonzoGet, registerMocks, captureStdout } from "./__test-helpers.js";
+import { mockMonzoGet, mockRequireSession, registerMocks, captureStdout } from "./__test-helpers.js";
 
 registerMocks();
 
@@ -15,6 +15,18 @@ describe("statement --json", () => {
   beforeEach(() => {
     stdout.reset();
     mockMonzoGet.mockReset();
+    // Other test files in this package call mockRequireSession.mockReset(),
+    // which wipes its base implementation (not just call history) — it's a
+    // process-global mock shared across every file via mock.module(). Set it
+    // explicitly here so this file doesn't depend on running before those
+    // files do (file execution order isn't guaranteed and differs by OS).
+    mockRequireSession.mockReset();
+    mockRequireSession.mockResolvedValue({
+      access_token: "test-token",
+      refresh_token: "test-refresh",
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      account_id: "acc_test123",
+    });
   });
 
   afterEach(() => stdout.restore());

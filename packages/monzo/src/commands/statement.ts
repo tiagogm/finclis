@@ -82,7 +82,6 @@ export async function statementCommand(opts: StatementOpts = {}): Promise<void> 
     }
     printStatement(statement);
   } catch (err: any) {
-    console.error(`[DIAGNOSTIC] ${err?.stack || err}`);
     if (opts.json) handleJsonError(err);
     console.error(`Failed: ${err.message}`);
     process.exit(0);

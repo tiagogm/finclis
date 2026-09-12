@@ -8,6 +8,7 @@ import { balanceCommand } from "./commands/balance.js";
 import { potsCommand, potsDepositCommand, potsWithdrawCommand } from "./commands/pots.js";
 import { transactionsCommand } from "./commands/transactions.js";
 import { summaryCommand } from "./commands/summary.js";
+import { statementCommand } from "./commands/statement.js";
 import { authViewCommand, authSetCommand, authClearCommand } from "./commands/auth.js";
 import { setVerbose } from "./client.js";
 
@@ -128,6 +129,15 @@ program
   .option("-v, --verbose", "Log HTTP requests")
   .addHelpText("after", "\nExamples:\n  monzo summary\n  monzo summary --month 2026-03\n  monzo summary --json")
   .action(summaryCommand);
+
+program
+  .command("statement")
+  .description("Standard bank-statement-style report for a month")
+  .option("--month <YYYY-MM>", "Month to report on (default: current)")
+  .option("--json", "Output raw JSON")
+  .option("-v, --verbose", "Log HTTP requests")
+  .addHelpText("after", "\nExamples:\n  monzo statement --month 2026-08\n  monzo statement --month 2026-08 --json")
+  .action(statementCommand);
 
 program.action(() => {
   program.help();

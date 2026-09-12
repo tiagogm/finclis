@@ -47,6 +47,15 @@ export async function statementCommand(opts: StatementOpts = {}): Promise<void> 
     const currentBalancePence = balanceData.balance;
     const currency = balanceData.currency || "GBP";
 
+    // Best-effort: label the statement with the real account description
+    // (e.g. "Joint Account"). An /accounts failure must not fail an
+    // otherwise-servable statement, so fall back to the generic name.
+    let accountName: string | undefined;
+    try {
+      const accountsData = await monzoGet("/accounts");
+      accountName = (accountsData.accounts || []).find((a: any) => a.id === session.account_id)?.description;
+    } catch {}
+
     let flowsSincePeriodEndPence = 0;
     if (!isCurrentPeriod) {
       let afterPeriodTxs: any[];
@@ -67,6 +76,7 @@ export async function statementCommand(opts: StatementOpts = {}): Promise<void> 
 
     const statement = buildMonzoStatement({
       accountId: session.account_id,
+      accountName,
       period,
       currency,
       periodTransactions,

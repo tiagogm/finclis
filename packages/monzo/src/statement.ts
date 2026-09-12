@@ -8,6 +8,7 @@ import {
 
 export interface MonzoStatementInput {
   accountId: string;
+  accountName?: string;
   period: StatementPeriod;
   currency: string;
   periodTransactions: any[];
@@ -45,7 +46,7 @@ export function buildMonzoStatement(input: MonzoStatementInput): Statement {
 
   return {
     platform: "monzo",
-    account: { id: input.accountId, name: "Current Account" },
+    account: { id: input.accountId, name: input.accountName || "Current Account" },
     accountType: "bank",
     period: input.period,
     currency: input.currency,

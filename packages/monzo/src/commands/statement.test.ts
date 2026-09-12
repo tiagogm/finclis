@@ -44,6 +44,9 @@ describe("statement --json", () => {
       if (path.startsWith("/balance")) {
         return { balance: 150000, currency: "GBP" };
       }
+      if (path.startsWith("/accounts")) {
+        return { accounts: [{ id: "acc_test123", description: "Personal Account" }] };
+      }
       if (path.startsWith("/transactions")) {
         // First call: period range (since=<lastMonth>-01, before=<lastMonth>-end) -> one transaction.
         // Second call: since=period end -> no more transactions (flows after period = 0).
@@ -62,6 +65,7 @@ describe("statement --json", () => {
     expect(parsed.period.month).toBe(lastMonth);
     expect(parsed.transactionCount).toBe(1);
     expect(parsed.balance.closing).toBe(1500);
+    expect(parsed.account.name).toBe("Personal Account");
   });
 
   it("outputs a Statement object for the current month with no trailing fetch", async () => {
@@ -73,6 +77,10 @@ describe("statement --json", () => {
     mockMonzoGet.mockImplementation(async (path: string) => {
       if (path.startsWith("/balance")) {
         return { balance: 200000, currency: "GBP" };
+      }
+      if (path.startsWith("/accounts")) {
+        // /accounts is best-effort: a failure falls back to the generic name.
+        throw new Error("API error 500: accounts unavailable");
       }
       if (path.startsWith("/transactions")) {
         if (path.includes(sinceSubstring)) {
@@ -94,13 +102,15 @@ describe("statement --json", () => {
     expect(parsed.transactionCount).toBe(1);
     expect(parsed.balance.closing).toBe(2000);
     expect(parsed.notes.join(" ")).toMatch(/in progress/i);
+    expect(parsed.account.name).toBe("Current Account");
 
     // The period end must be clamped to today, not the full calendar month.
     const todayStr = new Date().toISOString().slice(0, 10);
     expect(parsed.period.end).toBe(todayStr);
 
-    // Only the period-transactions call and the balance call should have happened.
-    expect(mockMonzoGet).toHaveBeenCalledTimes(2);
+    // Only the period-transactions, balance, and (best-effort) accounts
+    // calls should have happened.
+    expect(mockMonzoGet).toHaveBeenCalledTimes(3);
   });
 
   it("throws a clear error for a month older than 90 days with no cache", async () => {

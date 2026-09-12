@@ -8,6 +8,7 @@ import { ordersCommand } from "./commands/orders.js";
 import { registerHistoryCommand } from "./commands/history.js";
 import { instrumentsCommand } from "./commands/instruments.js";
 import { summaryCommand } from "./commands/summary.js";
+import { statementCommand } from "./commands/statement.js";
 import { setVerbose } from "./client.js";
 
 const program = new Command();
@@ -91,6 +92,15 @@ program
   .option("-v, --verbose", "Log HTTP requests")
   .addHelpText("after", "\nExamples:\n  trading212 summary\n  trading212 summary --month 2026-03\n  trading212 summary --year 2025\n  trading212 summary --from 2026-01-01 --to 2026-03-31 --json")
   .action(summaryCommand);
+
+program
+  .command("statement")
+  .description("Standard bank-statement-style report for a month (cash balance only)")
+  .option("--month <YYYY-MM>", "Month to report on (default: current)")
+  .option("--json", "Output raw JSON")
+  .option("-v, --verbose", "Log HTTP requests")
+  .addHelpText("after", "\nExamples:\n  trading212 statement --month 2026-08\n  trading212 statement --month 2026-08 --json")
+  .action(statementCommand);
 
 // Instruments
 program

@@ -1,5 +1,7 @@
 // Ported from finance-connectors-poc/src/connectors/lloyds/
 
+import type { Statement, StatementPeriod, StatementTransaction } from "@finclis/cli-utils";
+
 export interface LloydsTransaction {
   date: number; // Unix timestamp ms
   description: string;
@@ -75,6 +77,36 @@ export function mapTransaction(txn: LloydsTransaction): Transaction {
   };
 }
 
+/**
+ * Derive opening/closing balance from the running `balance` field carried by
+ * each raw transaction. `rawTransactions` are newest-first from the API, so
+ * the opening balance is reconstructed by backing out the earliest
+ * transaction's own money_in/money_out from its post-transaction balance.
+ * Falls back to `currentBalance` for both when there are no transactions.
+ */
+function deriveBalancesFromRunningBalance(
+  rawTransactions: LloydsTransaction[],
+  currentBalance: number
+): { opening: number; closing: number } {
+  if (rawTransactions.length === 0) {
+    return { opening: currentBalance, closing: currentBalance };
+  }
+
+  const earliest = rawTransactions[rawTransactions.length - 1];
+  const latest = rawTransactions[0];
+
+  let opening: number;
+  if (earliest.money_in !== undefined) {
+    opening = earliest.balance - earliest.money_in;
+  } else if (earliest.money_out !== undefined) {
+    opening = earliest.balance + earliest.money_out;
+  } else {
+    opening = earliest.balance;
+  }
+
+  return { opening, closing: latest.balance };
+}
+
 export function buildFinancialSummary(
   transactions: Transaction[],
   rawTransactions: LloydsTransaction[],
@@ -91,23 +123,7 @@ export function buildFinancialSummary(
     .filter((t) => t.type === TransactionType.INTEREST)
     .reduce((s, t) => s + t.amount, 0);
 
-  let opening = currentBalance;
-  let closing = currentBalance;
-
-  if (rawTransactions.length > 0) {
-    // Raw transactions are newest-first from API
-    const earliest = rawTransactions[rawTransactions.length - 1];
-    const latest = rawTransactions[0];
-
-    if (earliest.money_in !== undefined) {
-      opening = earliest.balance - earliest.money_in;
-    } else if (earliest.money_out !== undefined) {
-      opening = earliest.balance + earliest.money_out;
-    } else {
-      opening = earliest.balance;
-    }
-    closing = latest.balance;
-  }
+  const { opening, closing } = deriveBalancesFromRunningBalance(rawTransactions, currentBalance);
 
   const change = closing - opening;
   const changePercent = opening !== 0 ? change / opening : 0;
@@ -135,5 +151,41 @@ export function buildFinancialSummary(
       connector: "lloyds",
       transactionCount: transactions.length,
     },
+  };
+}
+
+export function buildLloydsStatement(
+  rawTransactions: LloydsTransaction[],
+  currentBalance: number,
+  period: StatementPeriod,
+  accountId: string
+): Statement {
+  const { opening, closing } = deriveBalancesFromRunningBalance(rawTransactions, currentBalance);
+
+  const credits = rawTransactions.reduce((s, t) => s + (t.money_in ?? 0), 0);
+  const debits = rawTransactions.reduce((s, t) => s + (t.money_out ?? 0), 0);
+
+  const transactions: StatementTransaction[] = rawTransactions.map((t) => ({
+    date: new Date(t.date).toISOString().slice(0, 10),
+    amount: t.money_in ?? t.money_out ?? 0,
+    direction: t.money_in !== undefined ? "credit" : "debit",
+    description: t.completeDescription.join(" - ") || t.description,
+    currency: "GBP",
+  }));
+
+  return {
+    platform: "lloyds",
+    account: { id: accountId, name: "Current Account" },
+    accountType: "bank",
+    period,
+    currency: "GBP",
+    balance: { opening, closing, type: "cash", source: "derived" },
+    cashBalance: null,
+    credits,
+    debits,
+    transactionCount: rawTransactions.length,
+    transactionsAvailable: true,
+    transactions,
+    notes: [],
   };
 }

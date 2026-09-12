@@ -62,7 +62,7 @@ function isCurrentMonth(fromDate: string, toDate: string): boolean {
   return from <= currentStart && currentStart <= to;
 }
 
-async function fetchCSV(fromDate: string, toDate: string): Promise<string> {
+export async function fetchCSV(fromDate: string, toDate: string): Promise<string> {
   const INITIAL_WAIT_MS = 8_000;
   const POLL_INTERVAL_MS = 10_000;
   const MAX_ATTEMPTS = 30;

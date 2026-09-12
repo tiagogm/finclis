@@ -7,6 +7,7 @@ import { balanceCommand } from "./commands/balance.js";
 import { holdingsCommand } from "./commands/holdings.js";
 import { performanceCommand } from "./commands/performance.js";
 import { summaryCommand } from "./commands/summary.js";
+import { statementCommand } from "./commands/statement.js";
 import { setVerbose, cleanup } from "./client.js";
 
 const program = new Command();
@@ -76,6 +77,15 @@ program
   .option("--json", "Output raw JSON")
   .addHelpText("after", "\nExamples:\n  vanguard summary\n  vanguard summary --month 2026-03\n  vanguard summary --year 2025\n  vanguard summary --from 2026-01-01 --to 2026-03-31 --json")
   .action(summaryCommand);
+
+program
+  .command("statement")
+  .description("Standard statement-style report for a month (portfolio value, not cash alone)")
+  .option("--month <YYYY-MM>", "Month to report on (default: current)")
+  .option("-v, --verbose", "Log HTTP requests")
+  .option("--json", "Output raw JSON")
+  .addHelpText("after", "\nExamples:\n  vanguard statement --month 2026-08\n  vanguard statement --month 2026-08 --json")
+  .action(statementCommand);
 
 program.action(() => {
   program.help();

@@ -8,6 +8,7 @@ import { tickerCommand } from "./commands/ticker.js";
 import { historyCommand } from "./commands/history.js";
 import { orderCommand } from "./commands/order.js";
 import { fundingCommand } from "./commands/funding.js";
+import { statementCommand } from "./commands/statement.js";
 import { setVerbose, setOtp } from "./client.js";
 
 const program = new Command();
@@ -64,6 +65,16 @@ program
   .option("--json", "Output raw JSON")
   .option("--rates <code>", "Show price and estimated value in this currency (e.g. USD, GBP, EUR)")
   .action(balancesCommand);
+
+program
+  .command("statement")
+  .description("Standard statement-style report for a month, scoped to one asset (funding only, trades excluded)")
+  .option("--month <YYYY-MM>", "Month to report on (default: current)")
+  .option("--asset <CODE>", "Asset to report on, e.g. XXBT, ZUSD (default: primary fiat balance)")
+  .option("--json", "Output raw JSON")
+  .option("-v, --verbose", "Log HTTP requests")
+  .addHelpText("after", "\nExamples:\n  kraken statement --month 2026-08\n  kraken statement --month 2026-08 --asset XXBT --json")
+  .action(statementCommand);
 
 // Orders group
 const orders = program

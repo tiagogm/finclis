@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 const vendors = [
@@ -39,7 +40,8 @@ function run(name: string, args: string[]): number {
     help();
     return 1;
   }
-  const bin = join(rootDir, "packages", vendor.dir, vendor.name);
+  const here = join(process.cwd(), "packages", vendor.dir, vendor.name);
+  const bin = existsSync(here) && existsSync(join(process.cwd(), ".git")) ? here : join(rootDir, "packages", vendor.dir, vendor.name);
   const result = spawnSync(process.execPath, [bin, ...args], { stdio: "inherit" });
   if (result.error) {
     console.error(result.error.message);

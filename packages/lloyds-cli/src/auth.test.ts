@@ -2,7 +2,7 @@ import { test, describe, beforeEach, afterEach, expect } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { saveSession, loadSession, clearSession, touchSession } from "./auth.js";
+import { saveSession, loadSession, clearSession, touchSession, buildUserAgent } from "./auth.js";
 
 const testDir = path.join(os.tmpdir(), "lloyds-cli-test-" + Date.now());
 const testSessionPath = path.join(testDir, "session.json");
@@ -81,6 +81,18 @@ describe("session storage", () => {
   test("clearSession is graceful when file does not exist", () => {
     clearSession(testSessionPath);
     expect(fs.existsSync(testSessionPath)).toBe(false);
+  });
+});
+
+describe("buildUserAgent", () => {
+  test("embeds the given Chrome version into a macOS desktop UA string", () => {
+    expect(buildUserAgent("145.0.0.0")).toBe(
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+    );
+  });
+
+  test("never hardcodes a specific version (regression guard for UA/Sec-CH-UA drift)", () => {
+    expect(buildUserAgent("999.0.0.0")).toContain("Chrome/999.0.0.0");
   });
 });
 

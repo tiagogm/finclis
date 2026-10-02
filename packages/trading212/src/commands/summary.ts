@@ -136,7 +136,7 @@ function aggregateByMonth(
 
   for (const tx of txns) {
     const d = parseCSVDate(tx.date);
-    if (d < from || d > to) continue;
+    if (Number.isNaN(d.getTime()) || d < from || d > to) continue;
 
     const key = monthKey(tx.date);
     if (!map.has(key)) {

@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 const SESSION_DIR = path.join(os.homedir(), ".lloyds-cli");
 export const SESSION_PATH = path.join(SESSION_DIR, "session.json");
@@ -28,38 +32,24 @@ const BROWSER_CONTEXT_OPTIONS = {
 
 let _cachedUserAgent: string | null = null;
 
-// Extracts the Chrome major.minor.build.patch version Playwright's bundled
-// Chromium actually reports, by launching a throwaway headless instance and
-// reading its own default navigator.userAgent.
+// Asks the installed Chromium binary directly ("--version") so we never need to
+// launch a browser just to read its own version string.
 async function detectChromeVersion(): Promise<string> {
   const { chromium } = await import("playwright");
-  const probeBrowser = await chromium.launch({ headless: true });
-  try {
-    const page = await probeBrowser.newPage();
-    const ua = await page.evaluate(() => navigator.userAgent);
-    const match = ua.match(/Chrome\/([\d.]+)/);
-    if (!match) {
-      throw new Error(`Could not determine bundled Chrome version from UA: ${ua}`);
-    }
-    return match[1];
-  } finally {
-    await probeBrowser.close();
+  const { stdout } = await execFileAsync(chromium.executablePath(), ["--version"]);
+  const match = stdout.match(/(\d+\.\d+\.\d+\.\d+)/);
+  if (!match) {
+    throw new Error(`Could not determine bundled Chrome version from: ${stdout}`);
   }
+  return match[1];
 }
 
 export function buildUserAgent(chromeVersion: string): string {
   return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
 }
 
-/**
- * Desktop Chrome/macOS UA spoof, built from whatever Chrome version Playwright's
- * bundled Chromium actually is. A hardcoded version string drifts from the real
- * engine every time the `playwright` dependency is upgraded, and Chromium's
- * Sec-CH-UA client-hints header (which can't be overridden) always reports the
- * real version — so a stale UA string creates a UA/Sec-CH-UA mismatch that
- * Lloyds' Akamai bot detection flags and blocks on the very first request.
- * Cached per-process so repeated calls don't each pay for a probe browser launch.
- */
+// Must track Chromium's real version — a stale UA mismatches the real Sec-CH-UA
+// client-hints header (which can't be overridden) and trips Lloyds' bot detection.
 export async function getUserAgent(): Promise<string> {
   if (_cachedUserAgent) return _cachedUserAgent;
   _cachedUserAgent = buildUserAgent(await detectChromeVersion());

@@ -44,6 +44,20 @@ function classifyAction(action: string): CSVTxType {
   return "other";
 }
 
+function normalizeDate(raw: string): string {
+  const s = raw.trim();
+  if (!s) return "";
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (dmy) {
+    const [, dd, mm, yyyy, hh = "00", mi = "00", ss = "00"] = dmy;
+    return new Date(Date.UTC(+yyyy, +mm - 1, +dd, +hh, +mi, +ss)).toISOString();
+  }
+  const iso = s.replace(" ", "T");
+  const zoned = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso) ? iso : `${iso}Z`;
+  const d = new Date(zoned);
+  return Number.isNaN(d.getTime()) ? s : d.toISOString();
+}
+
 export function parseTransactionsCSV(csvContent: string): CSVTx[] {
   const lines = csvContent.split(/\r?\n/).filter((line) => line.trim() !== "");
 
@@ -51,13 +65,15 @@ export function parseTransactionsCSV(csvContent: string): CSVTx[] {
     return [];
   }
 
-  const headers = parseCSVLine(lines[0]).map((h) => h.toLowerCase());
+  const headers = parseCSVLine(lines[0].replace(/^\uFEFF/, "")).map((h) =>
+    h.toLowerCase().trim()
+  );
 
   const actionIndex = headers.findIndex(
     (h) => h === "action" || h === "type" || h === "transaction type"
   );
   const timeIndex = headers.findIndex(
-    (h) => h === "time" || h === "date" || h === "datetime" || h === "date/time"
+    (h) => h.startsWith("time") || h.startsWith("date")
   );
   const amountIndex = headers.findIndex(
     (h) =>
@@ -70,6 +86,10 @@ export function parseTransactionsCSV(csvContent: string): CSVTx[] {
   if (actionIndex === -1) {
     console.warn("CSV parser: Could not find action/type column. Headers:", headers);
     return [];
+  }
+
+  if (timeIndex === -1) {
+    console.warn("CSV parser: Could not find time/date column. Headers:", headers);
   }
 
   const transactions: CSVTx[] = [];
@@ -89,7 +109,7 @@ export function parseTransactionsCSV(csvContent: string): CSVTx[] {
       amount = parseFloat(amountStr.replace(/[^0-9.-]/g, "")) || 0;
     }
 
-    transactions.push({ date: dateStr, amount, action, type });
+    transactions.push({ date: normalizeDate(dateStr), amount, action, type });
   }
 
   return transactions;

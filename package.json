@@ -7,9 +7,11 @@
     "finclis": "./finclis"
   },
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "finclis": "bun ./finclis",
     "test": "bun run --filter '*' test",
     "typecheck": "bun run --filter '*' typecheck",
-    "compile": "bun run --filter '*' compile"
+    "compile": "bun run --filter '*' compile",
+    "secrets:scan": "gitleaks git --redact --no-banner"
   }
 }

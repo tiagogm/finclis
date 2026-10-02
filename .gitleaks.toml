@@ -1,0 +1,16 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "local-home-path"
+description = "Absolute path into a user's home directory (use ~ or an example path instead)"
+regex = '''(?:/Users|/home|[Cc]:\\Users)/[A-Za-z0-9._-]+'''
+keywords = ["/users/", "/home/", "\\users\\"]
+
+[[rules.allowlists]]
+description = "Generic placeholders"
+regexes = ['''/(?:Users|home)/(?:\$|<|you\b|me\b|example\b|user\b|username\b)''']
+
+[[allowlists]]
+description = "Kraken's published API-docs example secret, used as a signing test vector"
+regexes = ['''kQH5HW/8p1uGOVjbgWA7FunAmGO8lsSUXNsu3eow76sz84Q18fWxnyRzBHCd3pd5nE9qa99HAZtuZuj6F1huXg==''']

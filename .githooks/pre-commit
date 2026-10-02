@@ -1,0 +1,17 @@
+#!/bin/sh
+# Blocks commits that leak private data. Enabled by `bun install` (see "prepare" in package.json).
+
+blocked=$(git diff --cached --name-only --diff-filter=ACR | grep -E '^docs/(plans|superpowers)/')
+if [ -n "$blocked" ]; then
+  echo "pre-commit: docs/plans and docs/superpowers are local-only and must not be committed:" >&2
+  echo "$blocked" | sed 's/^/  /' >&2
+  echo "Unstage with: git restore --staged <file>" >&2
+  exit 1
+fi
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is not installed (brew install gitleaks)" >&2
+  exit 1
+fi
+
+exec gitleaks git --pre-commit --staged --redact --no-banner --verbose

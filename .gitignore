@@ -5,7 +5,7 @@ src/**/*.js
 src/**/*.d.ts
 session.json
 bun.lock
-docs/plans/*
+docs/plans/
 docs/superpowers/
 .DS_Store
 *.bun-build

@@ -20,6 +20,23 @@ Code is 100% produced by Claude and partly human reviewed
 | [vanguard-cli](packages/vanguard/README.md) | `vanguard` | Unofficial CLI for Vanguard Investor UK | Browser |
 | [kraken-cli](packages/kraken/README.md) | `kraken` | Unofficial CLI for Kraken cryptocurrency exchange | API key |
 
+## Usage
+
+The root `finclis` command is a single entry point for discovery and dispatch:
+
+```bash
+finclis --help              # list available vendor CLIs
+finclis monzo --help        # list monzo commands
+finclis monzo balance       # run a monzo command
+finclis help kraken         # show kraken help
+```
+
+To use `finclis` from anywhere, link the root package once:
+
+```bash
+bun link
+```
+
 ## Installation
 
 ### From source

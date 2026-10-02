@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 const SESSION_DIR = path.join(os.homedir(), ".lloyds-cli");
 export const SESSION_PATH = path.join(SESSION_DIR, "session.json");
@@ -11,9 +15,6 @@ const LLOYDS_DASHBOARD_PATTERN = /\/personal\/a\/account_overview_personal\//;
 const ACCOUNTS_URL =
   "https://secure.lloydsbank.co.uk/personal/retail/aov-api/browser/aov/v1/accounts/account-type/C";
 
-export const USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-
 export const BROWSER_LAUNCH_ARGS = [
   "--disable-blink-features=AutomationControlled",
   "--no-sandbox",
@@ -21,7 +22,6 @@ export const BROWSER_LAUNCH_ARGS = [
 ];
 
 const BROWSER_CONTEXT_OPTIONS = {
-  userAgent: USER_AGENT,
   viewport: { width: 1024, height: 768 } as const,
   locale: "en-GB",
   timezoneId: "Europe/London",
@@ -29,6 +29,32 @@ const BROWSER_CONTEXT_OPTIONS = {
   hasTouch: false,
   isMobile: false,
 };
+
+let _cachedUserAgent: string | null = null;
+
+// Asks the installed Chromium binary directly ("--version") so we never need to
+// launch a browser just to read its own version string.
+async function detectChromeVersion(): Promise<string> {
+  const { chromium } = await import("playwright");
+  const { stdout } = await execFileAsync(chromium.executablePath(), ["--version"]);
+  const match = stdout.match(/(\d+\.\d+\.\d+\.\d+)/);
+  if (!match) {
+    throw new Error(`Could not determine bundled Chrome version from: ${stdout}`);
+  }
+  return match[1];
+}
+
+export function buildUserAgent(chromeVersion: string): string {
+  return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+}
+
+// Must track Chromium's real version — a stale UA mismatches the real Sec-CH-UA
+// client-hints header (which can't be overridden) and trips Lloyds' bot detection.
+export async function getUserAgent(): Promise<string> {
+  if (_cachedUserAgent) return _cachedUserAgent;
+  _cachedUserAgent = buildUserAgent(await detectChromeVersion());
+  return _cachedUserAgent;
+}
 
 export interface LloydsCliSession {
   arrangementId: string;
@@ -110,10 +136,13 @@ export async function authenticateWithBrowser(): Promise<LloydsCliSession> {
   // This avoids the "remember this device" prompt on every login.
   fs.mkdirSync(BROWSER_PROFILE_DIR, { recursive: true, mode: 0o700 });
 
+  const userAgent = await getUserAgent();
+
   const context = await chromium.launchPersistentContext(BROWSER_PROFILE_DIR, {
     headless: false,
     args: BROWSER_LAUNCH_ARGS,
     ignoreDefaultArgs: ["--enable-automation"],
+    userAgent,
     ...BROWSER_CONTEXT_OPTIONS,
   });
 

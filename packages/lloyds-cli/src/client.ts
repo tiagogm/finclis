@@ -3,7 +3,7 @@ import {
   touchSession,
   type LloydsCliSession,
   BROWSER_PROFILE_DIR,
-  USER_AGENT,
+  getUserAgent,
   BROWSER_LAUNCH_ARGS,
 } from "./auth.js";
 import type { LloydsTransaction } from "./aggregator.js";
@@ -39,11 +39,12 @@ export function requireSession(): LloydsCliSession {
 async function getContext(session: LloydsCliSession): Promise<any> {
   if (_context) return _context;
   const { chromium } = await import("playwright");
+  const userAgent = await getUserAgent();
   _context = await chromium.launchPersistentContext(BROWSER_PROFILE_DIR, {
     headless: true,
     args: BROWSER_LAUNCH_ARGS,
     ignoreDefaultArgs: ["--enable-automation"],
-    userAgent: USER_AGENT,
+    userAgent,
     viewport: { width: 1024, height: 768 },
     locale: "en-GB",
     timezoneId: "Europe/London",
@@ -114,7 +115,7 @@ export class LloydsApiClient {
         "Cache-Control": "no-cache",
         "IB-app-valid-end": "123",
         Referer: DASHBOARD_URL,
-        "User-Agent": USER_AGENT,
+        "User-Agent": await getUserAgent(),
         Cookie: this.cookieHeader,
       },
     });
